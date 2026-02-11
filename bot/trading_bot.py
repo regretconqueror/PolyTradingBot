@@ -63,6 +63,13 @@ class PolymarketTradingBot:
                 token_ids = raw.get("clobTokenIds") or []
                 prices = raw.get("outcomePrices") or []
 
+                # Gamma sometimes returns these as JSON-encoded strings.
+                import json
+                if isinstance(token_ids, str):
+                    token_ids = json.loads(token_ids)
+                if isinstance(prices, str):
+                    prices = json.loads(prices)
+
                 if len(token_ids) < 2:
                     continue
 
