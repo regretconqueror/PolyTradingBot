@@ -56,17 +56,28 @@ class PolymarketTradingBot:
         logger.info("Fetching markets from Polymarket...")
         raw_markets = self.api.get_active_markets(limit=50)
         markets = []
-        
+
         for raw in raw_markets:
             try:
-                tokens = raw.get("tokens", [])
-                if len(tokens) < 2:
+                # Gamma API currently provides token ids via `clobTokenIds` and prices via `outcomePrices`.
+                token_ids = raw.get("clobTokenIds") or []
+                prices = raw.get("outcomePrices") or []
+
+                if len(token_ids) < 2:
                     continue
-                
-                token_yes = tokens[0].get("token_id", "")
-                token_no = tokens[1].get("token_id", "")
-                
-                price = self.api.get_price(token_yes)
+
+                token_yes = str(token_ids[0])
+                token_no = str(token_ids[1])
+
+                # Prefer Gamma's outcomePrices[0] (YES) to avoid extra HTTP calls.
+                try:
+                    price = float(prices[0]) if len(prices) >= 1 else 0.0
+                except Exception:
+                    price = 0.0
+
+                if price <= 0:
+                    price = self.api.get_price(token_yes)
+
                 if price <= 0.05 or price >= 0.95:
                     continue
                 
@@ -86,7 +97,7 @@ class PolymarketTradingBot:
                     liquidity=float(raw.get("liquidity", 0)),
                     volume_24h=float(raw.get("volume", 0)),
                     category=raw.get("category", "General"),
-                    resolution_date=raw.get("resolutionDate", "")
+                    resolution_date=raw.get("endDateIso", raw.get("endDate", ""))
                 )
                 
                 markets.append(market)
