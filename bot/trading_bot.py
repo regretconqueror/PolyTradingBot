@@ -54,9 +54,11 @@ class PolymarketTradingBot:
 
         for raw in raw_markets:
             try:
+                # Gamma API currently provides token ids via `clobTokenIds` and prices via `outcomePrices`.
                 token_ids = raw.get("clobTokenIds") or []
                 prices = raw.get("outcomePrices") or []
 
+                # Gamma sometimes returns these as JSON-encoded strings.
                 import json
                 if isinstance(token_ids, str):
                     token_ids = json.loads(token_ids)
@@ -69,6 +71,7 @@ class PolymarketTradingBot:
                 token_yes = str(token_ids[0])
                 token_no = str(token_ids[1])
 
+                # Prefer Gamma's outcomePrices[0] (YES) to avoid extra HTTP calls.
                 try:
                     price = float(prices[0]) if len(prices) >= 1 else 0.0
                 except Exception:

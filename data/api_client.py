@@ -25,12 +25,12 @@ class PolymarketAPI:
             List of market dictionaries
         """
         endpoint = f"{self.gamma_url}/markets"
+        # NOTE: Gamma API validation may reject sort/order fields.
+        # Keep params minimal to avoid 422 validation errors.
         params = {
             "active": "true",
             "closed": "false",
-            "limit": limit,
-            "sort": "volume",
-            "order": "desc"
+            "limit": limit
         }
         
         try:
