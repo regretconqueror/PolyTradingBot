@@ -8,7 +8,8 @@ Advanced prediction market trading bot using ProjectFW (Frank-Wolfe) optimizatio
 - **Frank-Wolfe Algorithm**: Efficient convex optimization without projections
 - **Risk Management**: Position limits, category constraints, drawdown protection
 - **Paper Trading**: Test strategies without real money
-- **Live Trading**: Production-ready execution via Polymarket CLOB API
+- **Live Trading**: Production-ready execution via Polymarket CLOB API (not implemented in this version)
+- **Yes/No Sum Arbitrage (Paper)**: Detects YES+NO < 1 opportunities
 
 ## Quick Start
 
@@ -17,11 +18,3 @@ Advanced prediction market trading bot using ProjectFW (Frank-Wolfe) optimizatio
 pip install -r requirements.txt
 
 # Configure environment
-cp .env.example .env
-# Edit .env with your API keys
-
-# Run paper trading
-python run.py --mode paper --capital 10000
-
-# Run live trading (BE CAREFUL!)
-python run.py --mode live --capital 10000

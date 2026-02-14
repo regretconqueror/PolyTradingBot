@@ -45,17 +45,16 @@ def main():
         min_bet_size=settings.min_bet_size
     )
     
-    # IMPORTANT: Replace with your real model!
     model = SimpleEdgeModel(edge_factor=0.04)
     
-    # Create and run bot
     bot = PolymarketTradingBot(
         capital=capital,
         constraints=constraints,
         model=model,
         api_key=settings.api_key,
         api_secret=settings.api_secret,
-        paper_mode=paper_mode
+        paper_mode=paper_mode,
+        enable_yes_no_arb=True
     )
     
     print(f"\n{'='*80}")
@@ -66,7 +65,6 @@ def main():
     print(f"Model: {model.__class__.__name__}")
     print(f"{'='*80}\n")
     
-    # Run single cycle or continuous
     if args.interval > 0:
         bot.start(interval_minutes=args.interval)
     else:
