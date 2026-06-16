@@ -1,7 +1,7 @@
 """
 Yes/No sum arbitrage scanner
 
-If best_ask_yes + best_ask_no < 1 - fee_buffer, buy both sides.
+If best_ask_yes + best_ask_no < 1 - fee_buffer - min_edge, buy both sides.
 """
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
@@ -19,9 +19,10 @@ class YesNoArbSignal:
     size_dollars: float
 
 class YesNoArbScanner:
-    def __init__(self, fee_buffer: float = 0.02, max_per_market: float = 0.05):
+    def __init__(self, fee_buffer: float = 0.02, max_per_market: float = 0.05, min_edge: float = 0.005):
         self.fee_buffer = fee_buffer
         self.max_per_market = max_per_market
+        self.min_edge = min_edge
 
     def _best_ask(self, book: Dict) -> Optional[Tuple[float, float]]:
         """Return (price, size) for best ask. Handles dict or list entries."""
@@ -61,11 +62,16 @@ class YesNoArbScanner:
 
         ask_yes, size_yes = best_yes
         ask_no, size_no = best_no
+
+        # Validate prices are in valid range
+        if not (0 < ask_yes < 1 and 0 < ask_no < 1):
+            return None
+
         sum_price = ask_yes + ask_no
 
         # Edge is how far below 1 the combined price is (after fee buffer)
         edge = 1.0 - sum_price - self.fee_buffer
-        if edge <= 0:
+        if edge <= self.min_edge:  # Require edge to exceed minimum threshold
             return None
 
         # Budget cap per market
@@ -79,11 +85,16 @@ class YesNoArbScanner:
 
         size_dollars = shares * sum_price
 
+        # Validate token IDs exist
+        token_ids = market.get("clobTokenIds", ["", ""])
+        if len(token_ids) < 2:
+            return None
+
         return YesNoArbSignal(
             condition_id=market.get("conditionId", ""),
             question=market.get("question", "")[:80],
-            token_yes=str(market.get("clobTokenIds", ["", ""])[0]),
-            token_no=str(market.get("clobTokenIds", ["", ""])[1]),
+            token_yes=str(token_ids[0]),
+            token_no=str(token_ids[1]),
             ask_yes=ask_yes,
             ask_no=ask_no,
             sum_price=sum_price,
