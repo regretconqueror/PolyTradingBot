@@ -283,6 +283,12 @@ if theme_mode == "Light Mode":
     st.markdown("""
     <style>
         :root {
+            /* Override official Streamlit theme variables to force light mode for widgets and Glide Grid */
+            --background-color:           #ffffff !important;
+            --secondary-background-color: #f1f5f9 !important;
+            --text-color:                 #0f172a !important;
+            --primary-color:              #8b5cf6 !important;
+
             --bg-void:       #f8fafc;
             --bg-base:       #f1f5f9;
             --bg-surface:    #ffffff;
@@ -315,6 +321,20 @@ if theme_mode == "Light Mode":
             --glow-purple:   0 0 20px rgba(124,58,237,0.05), 0 0 60px rgba(124,58,237,0.02);
             --glow-green:    0 0 20px rgba(5,150,105,0.05), 0 0 60px rgba(5,150,105,0.02);
             --glow-cyan:     0 0 20px rgba(6,182,212,0.05), 0 0 60px rgba(6,182,212,0.02);
+        }
+
+        /* ── Light Mode: Dropdown Menu overrides ────────────────────────── */
+        div[data-baseweb="menu"] {
+            background-color: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+        div[data-baseweb="menu"] li, div[data-baseweb="menu"] div[role="option"] {
+            background-color: #ffffff !important;
+            color: #334155 !important;
+        }
+        div[data-baseweb="menu"] li:hover, div[data-baseweb="menu"] div[role="option"]:hover {
+            background-color: #f1f5f9 !important;
+            color: #7c3aed !important;
         }
 
         /* ── Light Mode: Global Backgrounds ─────────────────────────── */
