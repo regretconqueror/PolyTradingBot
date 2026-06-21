@@ -233,7 +233,14 @@ class BacktestEngine:
 
             # Get signals from strategy
             try:
-                signals = strategy_func(markets, **strategy_kwargs)
+                # Pass current capital to strategy if supported
+                signals = strategy_func(markets, capital=capital, **strategy_kwargs)
+            except TypeError:
+                try:
+                    signals = strategy_func(markets, **strategy_kwargs)
+                except Exception as e:
+                    logger.error(f"Strategy failed at {timestamp}: {e}")
+                    continue
             except Exception as e:
                 logger.error(f"Strategy failed at {timestamp}: {e}")
                 continue
@@ -258,20 +265,32 @@ class BacktestEngine:
                 slippage = self.slippage_bps / 10000
                 if action == 'BUY':
                     exec_price = market_price * (1 + slippage)
+                    old_shares = positions.get(token_id, {}).get('shares', 0)
                     capital, positions = self._execute_buy(
                         capital, positions, token_id, size_usd, exec_price, timestamp)
+                    new_shares = positions.get(token_id, {}).get('shares', 0)
+                    if new_shares > old_shares:
+                        trade_log.append({
+                            'timestamp': timestamp,
+                            'token_id': token_id,
+                            'action': 'BUY',
+                            'price': exec_price,
+                            'size_usd': (new_shares - old_shares) * exec_price,
+                            'pnl': 0.0,
+                        })
                 elif action == 'SELL':
                     exec_price = market_price * (1 - slippage)
-                    capital, positions, pnl = self._execute_sell(
-                        capital, positions, token_id, size_usd, exec_price, timestamp)
-                    trade_log.append({
-                        'timestamp': timestamp,
-                        'token_id': token_id,
-                        'action': 'SELL',
-                        'price': exec_price,
-                        'size_usd': size_usd,
-                        'pnl': pnl,
-                    })
+                    if token_id in positions:
+                        capital, positions, pnl = self._execute_sell(
+                            capital, positions, token_id, size_usd, exec_price, timestamp)
+                        trade_log.append({
+                            'timestamp': timestamp,
+                            'token_id': token_id,
+                            'action': 'SELL',
+                            'price': exec_price,
+                            'size_usd': size_usd,
+                            'pnl': pnl,
+                        })
 
             # Mark end-of-step portfolio value
             portfolio_value = capital
@@ -425,7 +444,7 @@ class BacktestEngine:
 # =====================================================================
 
 def ensemble_edge_strategy(markets: List[Dict], min_edge: float = 0.03,
-                            bet_fraction: float = 0.10) -> List[Dict]:
+                            bet_fraction: float = 0.10, capital: float = 1000.0) -> List[Dict]:
     """
     Use EnsembleModel to find edge and generate buy signals.
     Sells positions where edge has turned negative.
@@ -443,7 +462,7 @@ def ensemble_edge_strategy(markets: List[Dict], min_edge: float = 0.03,
             signals.append({
                 'action': 'BUY',
                 'token_id': market['token_id'],
-                'size_usd': bet_fraction * 1000,  # $100 per signal at 10% of $1000
+                'size_usd': bet_fraction * capital,  # dynamically scaled to current capital
                 'price': price,
             })
         elif edge < -min_edge and price > 0.5:
@@ -451,7 +470,7 @@ def ensemble_edge_strategy(markets: List[Dict], min_edge: float = 0.03,
             signals.append({
                 'action': 'SELL',
                 'token_id': market['token_id'],
-                'size_usd': bet_fraction * 1000,
+                'size_usd': bet_fraction * capital,
                 'price': price,
             })
 

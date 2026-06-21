@@ -292,49 +292,55 @@ class RiskManager:
         if len(tokens) == 0:
             return 0.0
 
+        valid_tokens = []
         returns_data = []
         for token in tokens:
             if token in self.price_history and len(self.price_history[token]) > 1:
                 prices = self.price_history[token]
                 returns = np.diff(prices) / prices[:-1]
-                # Use most recent data
-                if len(returns) > lookback:
-                    returns = returns[-lookback:]
-                returns_data.append(returns)
+                # Ensure minimum length of 10 returns
+                if len(returns) >= 10:
+                    if len(returns) > lookback:
+                        returns = returns[-lookback:]
+                    returns_data.append(returns)
+                    valid_tokens.append(token)
 
         if len(returns_data) == 0:
             return 0.0
 
         # Ensure same length
         min_length = min(len(r) for r in returns_data)
-        if min_length < 10:  # Need minimum data
-            return 0.0
-
         trimmed_returns = [r[-min_length:] for r in returns_data]
         returns_matrix = np.array(trimmed_returns)
 
-        # Calculate portfolio weights based on current positions
+        # Calculate portfolio weights based on current positions of valid tokens
         weights = []
-        total_value = 0.0
+        valid_portfolio_value = 0.0
         position_values = {}
 
+        total_portfolio_value = 0.0
         for token in tokens:
             if token in current_prices and token in self.positions:
-                position_value = abs(self.positions[token]['size']) * current_prices[token]
-                position_values[token] = position_value
-                total_value += position_value
+                pos_val = abs(self.positions[token]['size']) * current_prices[token]
+                position_values[token] = pos_val
+                total_portfolio_value += pos_val
+                if token in valid_tokens:
+                    valid_portfolio_value += pos_val
 
-        if total_value == 0:
+        if total_portfolio_value == 0 or valid_portfolio_value == 0:
             return 0.0
 
-        for token in tokens:
+        for token in valid_tokens:
             if token in position_values:
-                weights.append(position_values[token] / total_value)
+                weights.append(position_values[token] / valid_portfolio_value)
             else:
                 weights.append(0.0)
 
         weights = np.array(weights)
-        weights = weights / np.sum(weights)  # Normalize
+        if np.sum(weights) > 0:
+            weights = weights / np.sum(weights)  # Normalize
+        else:
+            return 0.0
 
         # Calculate portfolio returns
         if returns_matrix.shape[0] == len(weights):
@@ -345,9 +351,11 @@ class RiskManager:
             var_index = int((1 - confidence) * len(sorted_returns))
             if var_index < len(sorted_returns):
                 var = -sorted_returns[var_index]  # VaR is positive number representing loss
-                return var * total_value  # Return in dollar terms
+                # Scale sub-portfolio VaR percentage to total portfolio value
+                return var * total_portfolio_value
 
         return 0.0
+
 
     def stress_test_scenario(self, current_prices: Dict[str, float],
                            scenario_shocks: Dict[str, float]) -> Dict:

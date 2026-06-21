@@ -344,6 +344,122 @@ class MarketSentimentModel(ProbabilityModel):
         return 0.0
 
 
+class WhaleTrackerModel(ProbabilityModel):
+    """
+    Whale Tracker Model (Smart Money Tracking).
+    
+    Tracks a set of high-performing, profitable Polymarket wallets.
+    Fetches their positions via Gamma API and adjusts probability
+    estimates in favor of outcomes where whales have high exposure.
+    """
+    def __init__(self, whale_wallets: Optional[List[str]] = None, 
+                 impact_factor: float = 0.05,
+                 fallback_positions: Optional[Dict] = None):
+        """
+        Args:
+            whale_wallets: List of wallet addresses (0x...) to track.
+            impact_factor: Maximum adjustment to probability (e.g. 0.05 = ±5%).
+            fallback_positions: Mock dictionary for testing or paper mode.
+        """
+        # Default whale wallets from Polymarket leaderboard if none provided
+        self.whale_wallets = whale_wallets or [
+            "0x4b7a2a192c73295c2560ec0a887b474328574169", # Mock/leaderboard whale 1
+            "0x5da8f8cb9cbef0c85c276313ef31102dbd668270"  # Mock/leaderboard whale 2
+        ]
+        self.impact_factor = impact_factor
+        # format: {token_id: {wallet: {"size": float, "side": "BUY"|"SELL", "outcome": "YES"|"NO"}}}
+        self.fallback_positions = fallback_positions or {}
+        
+        # Cache of whale positions to prevent hitting API for every single token/outcome
+        self._positions_cache = {}
+        self._cache_timestamp = None
+        self._cache_duration = timedelta(minutes=5)
+
+    def estimate_probability(self, market: Dict) -> float:
+        try:
+            token_id = market.get("token_id") or market.get("token_id_yes", "")
+            current_price = float(market.get("current_price", 0.5))
+            condition_id = market.get("conditionId", "")
+            token_ids = market.get("clobTokenIds", [])
+
+            if not token_id:
+                return current_price
+
+            # Fetch whale positions
+            whale_yes_shares = 0.0
+            whale_no_shares = 0.0
+            
+            # Check fallback/mock positions first (useful for testing or paper trading)
+            if token_id in self.fallback_positions:
+                mock_data = self.fallback_positions[token_id]
+                for wallet, pos in mock_data.items():
+                    size = float(pos.get("size", 0))
+                    outcome = pos.get("outcome", "YES")
+                    if outcome == "YES":
+                        whale_yes_shares += size
+                    else:
+                        whale_no_shares += size
+
+            # Attempt live lookup via Gamma API if not using fallback values
+            if not whale_yes_shares and not whale_no_shares:
+                import requests
+                now = datetime.now()
+                # Use cache if it's less than 5 minutes old
+                use_cache = (
+                    self._cache_timestamp is not None
+                    and now - self._cache_timestamp < self._cache_duration
+                )
+                
+                if not use_cache:
+                    new_cache = {}
+                    for wallet in self.whale_wallets:
+                        try:
+                            url = f"https://gamma-api.polymarket.com/positions?userAddress={wallet}"
+                            res = requests.get(url, timeout=3)
+                            if res.status_code == 200:
+                                new_cache[wallet] = res.json()
+                        except Exception as e:
+                            logger.warning(f"Error fetching whale positions for {wallet}: {e}")
+                    self._positions_cache = new_cache
+                    self._cache_timestamp = now
+
+                # Extract positions from cached data
+                for wallet in self.whale_wallets:
+                    positions = self._positions_cache.get(wallet, [])
+                    if isinstance(positions, list):
+                        for pos in positions:
+                            pos_condition = pos.get("conditionId")
+                            asset_id = pos.get("asset")
+                            size = float(pos.get("size", 0))
+                            if asset_id == token_id:
+                                whale_yes_shares += size
+                            elif len(token_ids) >= 2 and asset_id == token_ids[1]:
+                                whale_no_shares += size
+                            elif pos_condition == condition_id:
+                                # Fallback outcome checks
+                                outcome = str(pos.get("outcome", "")).upper()
+                                if outcome == "YES":
+                                    whale_yes_shares += size
+                                elif outcome == "NO":
+                                    whale_no_shares += size
+
+            # Calculate adjustment based on relative holdings
+            total_shares = whale_yes_shares + whale_no_shares
+            if total_shares == 0:
+                return current_price
+
+            net_skew = (whale_yes_shares - whale_no_shares) / total_shares
+            adjustment = net_skew * self.impact_factor
+
+            adjusted_prob = current_price + adjustment
+            return float(max(0.005, min(0.995, adjusted_prob)))
+
+        except Exception as e:
+            logger.warning(f"Error in WhaleTrackerModel: {e}")
+            return float(market.get("current_price", 0.5))
+
+
+
 # Ensemble model that combines multiple approaches
 class EnsembleModel(ProbabilityModel):
     """
@@ -355,7 +471,8 @@ class EnsembleModel(ProbabilityModel):
         if models is None:
             self.models = [
                 MarketSentimentModel(),                # Smart long-shot filtering
-                VolatilityAdjustedModel(lookback_period=15, confidence_level=0.85)
+                VolatilityAdjustedModel(lookback_period=15, confidence_level=0.85),
+                WhaleTrackerModel()                    # Whale wallet/Smart money tracker
             ]
         else:
             self.models = models

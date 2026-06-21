@@ -18,6 +18,11 @@ from strategies import EnsembleModel
 
 
 def main():
+    import logging
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    )
     parser = argparse.ArgumentParser(description="Polymarket Trading Bot")
     parser.add_argument("--capital", type=float, help="Trading capital")
     parser.add_argument("--mode", choices=["paper", "live"], default="paper", help="Trading mode")

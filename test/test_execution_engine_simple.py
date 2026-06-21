@@ -235,6 +235,17 @@ class TestExecutionEngineSimple(unittest.TestCase):
         readiness = engine_ready.validate_live_ready()
         self.assertTrue(readiness['ready'])
 
+    def test_get_connection_details_missing_credentials(self):
+        """Test get_connection_details when credentials are missing"""
+        engine = ExecutionEngine(api_key="")
+        details = engine.get_connection_details()
+        self.assertFalse(details['connected'])
+        self.assertEqual(details['status_text'], 'Disconnected')
+        self.assertIsNone(details['eoa_address'])
+        self.assertIsNone(details['proxy_address'])
+        self.assertEqual(details['proxy_balance'], 0.0)
+        self.assertIn("Missing credentials", details['error'])
+
 
 if __name__ == '__main__':
     unittest.main()

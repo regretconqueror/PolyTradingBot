@@ -127,3 +127,7 @@ class PortfolioConstraints:
     })
     min_bet_size: float = 0.02
     max_drawdown: float = 0.15
+    # Joint constraint: max total allocation across ALL outcome tokens of the same
+    # market condition (e.g. YES + NO of the same market must not exceed this).
+    # Prevents the optimizer from simultaneously betting every side of one event.
+    max_condition_exposure: float = 0.25

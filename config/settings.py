@@ -62,4 +62,5 @@ class Settings:
         )
 
 def load_settings():
+    load_dotenv(override=True)
     return Settings.from_env()

@@ -14,6 +14,7 @@ from strategies import ProbabilityModel, SimpleEdgeModel, YesNoArbScanner, Weigh
 from core.risk_manager import RiskManager
 from bot.execution import ExecutionEngine
 from bot.alert_manager import AlertManager
+from bot.limit_quoter import LimitQuoter
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +81,9 @@ class PolymarketTradingBot:
                  enable_yes_no_arb: bool = True,
                  arb_fee_buffer: float = 0.02,
                  arb_max_per_market: float = 0.05,
-                 slippage_tolerance: float = 0.015):
+                 slippage_tolerance: float = 0.015,
+                 use_limit_orders: bool = False,
+                 quote_aggressiveness: float = 0.3):
 
         self.capital = capital
         self.constraints = constraints or PortfolioConstraints()
@@ -110,6 +113,15 @@ class PolymarketTradingBot:
         self.live_dry_run = live_dry_run
         self.max_live_orders_per_cycle = max_live_orders_per_cycle
         self.slippage_tolerance = slippage_tolerance
+        self.use_limit_orders = use_limit_orders
+        self.quote_aggressiveness = quote_aggressiveness
+
+        # Limit order quoter (active when use_limit_orders=True)
+        self.limit_quoter = LimitQuoter(
+            execution_engine=self.execution_engine,
+            aggressiveness=quote_aggressiveness,
+            dry_run=live_dry_run or not live_trading_enabled,
+        )
 
         # Risk monitoring thresholds
         self.drawdown_alert_threshold = 0.10  # Alert at 10% drawdown
@@ -139,6 +151,8 @@ class PolymarketTradingBot:
             'avg_win': 0.0,
             'avg_loss': 0.0,
             'profit_factor': 0.0,
+            'biggest_win_history': 0.0,
+            'biggest_win_today': 0.0,
             'last_updated': None
         }
 
@@ -247,6 +261,15 @@ class PolymarketTradingBot:
             gross_loss = abs(sum(losses))
             profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf') if gross_profit > 0 else 0.0
 
+            # Calculate biggest wins
+            wins = [p for p in realized_pnls if p > 0]
+            biggest_win_history = max(wins) if wins else 0.0
+
+            today_str = datetime.now().date().isoformat()
+            today_wins = [float(t.get('realized_pnl', 0) or 0) for t in closed_trades
+                          if t.get('closed_at', '').startswith(today_str) and float(t.get('realized_pnl', 0) or 0) > 0]
+            biggest_win_today = max(today_wins) if today_wins else 0.0
+
             self.performance_metrics.update({
                 'total_trades': total_trades,
                 'winning_trades': winning_trades,
@@ -259,6 +282,8 @@ class PolymarketTradingBot:
                 'avg_win': avg_win,
                 'avg_loss': avg_loss,
                 'profit_factor': profit_factor,
+                'biggest_win_history': biggest_win_history,
+                'biggest_win_today': biggest_win_today,
                 'last_updated': datetime.now().isoformat()
             })
 
@@ -286,7 +311,26 @@ class PolymarketTradingBot:
     def get_performance_summary(self) -> Dict:
         """Get current performance summary"""
         self._update_performance_metrics()
-        return self.performance_metrics.copy()
+        metrics = self.performance_metrics.copy()
+        metrics['Performance Summary'] = f"""
+            Total Trades: {metrics['total_trades']}
+            Win Rate: {metrics['win_rate']:.1%}
+            Total P&L: ${metrics['total_pnl']:,.2f} ({metrics['total_pnl_percent']:.2f}%)
+            Profit Factor: {metrics['profit_factor']:.2f}
+            Sharpe Ratio: {metrics['sharpe_ratio']:.2f}
+            Avg Win: ${metrics['avg_win']:.2f}
+            Avg Loss: ${metrics['avg_loss']:.2f}
+            Biggest Win (All-Time): ${metrics['biggest_win_history']:.2f}
+            Biggest Win (Today): ${metrics['biggest_win_today']:.2f}
+            Last Updated: {metrics['last_updated'] or 'Never'}
+            """
+        return metrics
+
+    def get_api_connection_details(self) -> Dict:
+        """Get Polymarket API connection status, wallet addresses, and balance."""
+        return self.execution_engine.get_connection_details()
+
+
 
     def _simulate_order_execution(self, token_id: str, side: str, size_usd: float, market_price: float) -> Dict:
         """
@@ -829,6 +873,142 @@ class PolymarketTradingBot:
 
         return exit_orders, exit_signals
 
+    def manage_open_limit_orders(self):
+        """
+        Manage lifecycle of open limit orders.
+        Polls the status of pending/open limit orders on the CLOB,
+        updates trade history and positions when filled, and
+        re-quotes if the market price has moved.
+        """
+        if not self.use_limit_orders:
+            return
+
+        open_quotes = self.limit_quoter.open_quotes
+        if not open_quotes:
+            return
+
+        logger.info(f"Managing {len(open_quotes)} open limit order quotes...")
+
+        for token_id, quote in list(open_quotes.items()):
+            order_id = quote.get("order_id")
+            side = quote.get("side", "BUY")
+            size = quote.get("size", 0)
+            limit_price = quote.get("price", 0.5)
+
+            if not order_id:
+                continue
+
+            is_dry = order_id.startswith("dry_") or self.paper_mode or self.live_dry_run
+            is_filled = False
+            is_cancelled = False
+            actual_fill_price = limit_price
+            actual_filled_size = size
+
+            current_price = self.api.get_price(token_id)
+
+            if is_dry:
+                # Simulate fill if price crossed limit price
+                if current_price > 0:
+                    if side == "BUY" and current_price <= limit_price:
+                        is_filled = True
+                    elif side == "SELL" and current_price >= limit_price:
+                        is_filled = True
+            else:
+                # Poll live CLOB order status
+                try:
+                    status_res = self.execution_engine.get_order_status(order_id)
+                    if status_res.get("status") == "success":
+                        order_data = status_res.get("order_data", {})
+                        clob_status = str(order_data.get("status", "")).upper()
+                        
+                        if clob_status == "FILLED":
+                            is_filled = True
+                            actual_fill_price = float(order_data.get("price", limit_price))
+                            actual_filled_size = float(order_data.get("size", size))
+                        elif clob_status in ("CANCELED", "CANCELLED", "EXPIRED"):
+                            is_cancelled = True
+                    else:
+                        logger.warning(f"Failed to fetch order status for {order_id}: {status_res.get('error')}")
+                except Exception as e:
+                    logger.error(f"Error polling live order status for {order_id}: {e}")
+
+            if is_filled:
+                logger.info(f"Limit order {order_id} FILLED at {actual_fill_price:.3f} (size={actual_filled_size})")
+                # Update trade_history status to FILLED or EXITED
+                trade_found = False
+                for trade in self.trade_history:
+                    if trade.get("order_id") == order_id:
+                        # Determine if this was an exit order or entry order
+                        is_exit = trade.get("side_to_close") == "SELL" or trade.get("reason") in [r.value for r in ExitReason]
+                        
+                        if is_exit:
+                            # It's an exit order
+                            realized_pnl = (actual_fill_price - trade.get("entry_price", 0)) * actual_filled_size
+                            trade.update({
+                                "status": TradeStatus.EXITED.value,
+                                "exit_price": actual_fill_price,
+                                "realized_pnl": realized_pnl,
+                                "closed_at": datetime.now().isoformat()
+                            })
+                            # Remove from risk manager
+                            self.risk_manager.update_position(
+                                token_id=token_id,
+                                size=actual_filled_size,
+                                price=actual_fill_price,
+                                side="SELL",
+                                category="exit"
+                            )
+                        else:
+                            # It's an entry order
+                            trade.update({
+                                "status": TradeStatus.FILLED.value,
+                                "execution_price": actual_fill_price,
+                                "filled_size": actual_filled_size,
+                                "filled_value": actual_filled_size * actual_fill_price,
+                                "filled_at": datetime.now().isoformat()
+                            })
+                            # Add to risk manager
+                            self.risk_manager.update_position(
+                                token_id=token_id,
+                                size=actual_filled_size,
+                                price=actual_fill_price,
+                                side="BUY",
+                                category=trade.get("category", "default")
+                            )
+                        trade_found = True
+                        break
+                
+                # Clean up tracking
+                self.limit_quoter._open_quotes.pop(token_id, None)
+
+            elif is_cancelled:
+                logger.info(f"Limit order {order_id} was cancelled or expired.")
+                for trade in self.trade_history:
+                    if trade.get("order_id") == order_id:
+                        trade["status"] = TradeStatus.FAILED.value
+                        break
+                self.limit_quoter._open_quotes.pop(token_id, None)
+
+            else:
+                # Order still open/pending. Re-evaluate quoting if price moved.
+                try:
+                    requote_res = self.limit_quoter.requote(token_id)
+                    req_status = requote_res.get("status")
+                    if req_status in ("success", "submitted", "dry_run"):
+                        new_order_id = requote_res.get("order_id")
+                        new_price = requote_res.get("price")
+                        logger.info(f"Re-quoted order {order_id} -> new order {new_order_id} at {new_price:.3f}")
+                        
+                        # Update the corresponding trade in history with the new order details
+                        for trade in self.trade_history:
+                            if trade.get("order_id") == order_id:
+                                trade["order_id"] = new_order_id
+                                if "execution_price" in trade:
+                                    trade["execution_price"] = new_price
+                                break
+                except Exception as e:
+                    logger.error(f"Error requoting limit order for {token_id}: {e}")
+
     def execute_exit_order(self, exit_order: Dict):
         """Execute a single exit order (paper or live).
 
@@ -990,7 +1170,7 @@ class PolymarketTradingBot:
         if not markets:
             return np.array([])
         
-        allocations, status, info = self.optimizer.optimize(markets, self.constraints)
+        allocations, status, info = self.optimizer.optimize(markets, self.constraints, capital=self.capital)
         logger.info(f"Optimization {status.value} in {info['iterations']} iterations")
         logger.info(f"Expected log utility: {info['final_objective']:.6f}")
         return allocations
@@ -1123,13 +1303,38 @@ class PolymarketTradingBot:
         logger.info(f"Executing {len(orders_to_submit)} live trades")
         for order in orders_to_submit:
             try:
-                # Execute market order to buy the token (we always buy the token we have an edge on)
-                result = self.execution_engine.execute_market_order(
-                    token_id=order['token_id'],
-                    side='BUY',
-                    size=order['size'],
-                    price=order.get('market_price')
-                )
+                market_price = float(order.get('market_price') or 0)
+
+                if self.use_limit_orders and market_price > 0:
+                    # ── Limit Order (post-only GTC) ─────────────────────────
+                    # Re-quote any existing position; place new if none.
+                    token_id = order['token_id']
+                    size_usd = order['size']
+                    # Convert dollar size → shares for limit order
+                    size_shares = size_usd / market_price if market_price > 0 else size_usd
+                    quote_result = self.limit_quoter.quote(
+                        token_id=token_id,
+                        side='BUY',
+                        size=size_shares,
+                    )
+                    result = quote_result
+                    order_type_label = "LIMIT"
+                    logger.info(
+                        "Limit order quoted: %s @ %.4f (agg=%.1f, status=%s)",
+                        token_id[:12], quote_result.get('price', 0),
+                        self.quote_aggressiveness,
+                        quote_result.get('status'),
+                    )
+                else:
+                    # ── Market Order (FOK) ───────────────────────────────────
+                    result = self.execution_engine.execute_market_order(
+                        token_id=order['token_id'],
+                        side='BUY',
+                        size=order['size'],
+                        price=market_price or None,
+                    )
+                    order_type_label = "MARKET"
+
                 # Add execution result to order for tracking
                 order['execution_result'] = result
                 # Only add to history if successful
@@ -1151,6 +1356,8 @@ class PolymarketTradingBot:
                     dry_run_order = order.copy()
                     dry_run_order['status'] = TradeStatus.DRY_RUN.value
                     dry_run_order['execution_result'] = result
+                    dry_run_order['order_id'] = result.get('order_id')
+                    dry_run_order['execution_price'] = result.get('price') or order.get('market_price')
                     self.trade_history.append(dry_run_order)
                     logger.info(f"Live dry run: {order['market']} {order['direction']} ${order['size']:.2f}")
                 else:
@@ -1268,6 +1475,14 @@ class PolymarketTradingBot:
     def run(self):
 
         """Execute one trading cycle"""
+        if not self.paper_mode:
+            try:
+                live_balance = self.execution_engine.get_collateral_balance()
+                if live_balance > 0:
+                    logger.info(f"Dynamic capital allocation: updating capital from ${self.capital:,.2f} to wallet balance ${live_balance:,.2f}")
+                    self.capital = live_balance
+            except Exception as e:
+                logger.error(f"Failed to fetch live balance for dynamic capital allocation: {e}")
 
         print(f"\n{'=' * 80}")
         print(f"POLYMARKET BOT - {datetime.now()}")
@@ -1280,14 +1495,19 @@ class PolymarketTradingBot:
 
         try:
             # -----------------------------------------------------------------
-            # STEP 0: EXIT MANAGEMENT (before new entries — this is non-negotiable)
+            # STEP 0: LIMIT ORDER LIFECYCLE MANAGEMENT
+            # -----------------------------------------------------------------
+            self.manage_open_limit_orders()
+
+            # -----------------------------------------------------------------
+            # STEP 0.1: EXIT MANAGEMENT (before new entries — this is non-negotiable)
             # Inspired by Polymarket blog lesson: "build exit management before entry logic"
             # -----------------------------------------------------------------
             exit_orders, exit_signals = self.manage_exits()
             for exit_order in exit_orders:
                 self.execute_exit_order(exit_order)
             if exit_orders:
-                print(f"\n⚠ Closed {len(exit_orders)} position(s) this cycle")
+                print(f"\n[WARNING] Closed {len(exit_orders)} position(s) this cycle")
                 for sig in exit_signals:
                     print(f"   {sig.reason.value}: {sig.token_id} (conf={sig.confidence:.0%})")
 
@@ -1387,7 +1607,7 @@ class PolymarketTradingBot:
         metrics = self.get_performance_summary()
 
         print("\n" + "=" * 80)
-        print("📊 PERFORMANCE REPORT")
+        print("PERFORMANCE REPORT")
         print("=" * 80)
         print(f"Total Trades: {metrics['total_trades']}")
         print(f"Winning Trades: {metrics['winning_trades']}")
@@ -1397,6 +1617,8 @@ class PolymarketTradingBot:
         print(f"Average Win: ${metrics['avg_win']:,.2f}")
         print(f"Average Loss: ${metrics['avg_loss']:,.2f}")
         print(f"Profit Factor: {metrics['profit_factor']:.2f}")
+        print(f"Biggest Win (All-Time): ${metrics['biggest_win_history']:,.2f}")
+        print(f"Biggest Win (Today): ${metrics['biggest_win_today']:,.2f}")
         print(f"Max Drawdown: {metrics['max_drawdown']:.1%}")
         print(f"Sharpe Ratio: {metrics['sharpe_ratio']:.2f}")
         print(f"Last Updated: {metrics['last_updated']}")
@@ -1724,6 +1946,8 @@ class PolymarketTradingBot:
                 'avg_win': 0.0,
                 'avg_loss': 0.0,
                 'profit_factor': 0.0,
+                'biggest_win_history': 0.0,
+                'biggest_win_today': 0.0,
                 'last_updated': None
             })
 
@@ -1807,7 +2031,7 @@ class PolymarketTradingBot:
                 return
 
             # Run optimization to get target allocations
-            allocations, status, info = self.optimizer.optimize(markets, self.constraints)
+            allocations, status, info = self.optimizer.optimize(markets, self.constraints, capital=self.capital)
 
             if status.value != "converged":
                 logger.warning(f"Optimization did not converge: {status.value}")
@@ -1845,30 +2069,5 @@ class PolymarketTradingBot:
         except Exception as e:
             logger.error(f"Error executing rebalance: {e}")
 
-    def get_performance_summary(self) -> Dict:
-        """Get a formatted performance summary"""
-        self.update_performance_metrics()
 
-        metrics = self.performance_metrics
-        return {
-            'Performance Summary': f"""
-            Total Trades: {metrics['total_trades']}
-            Win Rate: {metrics['win_rate']:.1%}
-            Total P&L: ${metrics['total_pnl']:,.2f} ({metrics['total_pnl_percent']:.2f}%)
-            Profit Factor: {metrics['profit_factor']:.2f}
-            Sharpe Ratio: {metrics['sharpe_ratio']:.2f}
-            Avg Win: ${metrics['avg_win']:.2f}
-            Avg Loss: ${metrics['avg_loss']:.2f}
-            Last Updated: {metrics['last_updated'] or 'Never'}
-            """
-        }
-
-    def print_performance_report(self):
-        """Print a formatted performance report"""
-        summary = self.get_performance_summary()
-        print("\n" + "=" * 60)
-        print("PERFORMANCE REPORT")
-        print("=" * 60)
-        print(summary['Performance Summary'])
-        print("=" * 60)
 

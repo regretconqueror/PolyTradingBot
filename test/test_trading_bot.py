@@ -138,6 +138,46 @@ class TestTradingBot(unittest.TestCase):
         self.assertEqual(self.bot.performance_metrics['total_pnl'], 0.0)
         self.assertEqual(self.bot.performance_metrics['win_rate'], 0.5)  # 1/2
 
+    def test_update_performance_metrics_biggest_wins(self):
+        """Test calculation of history and today biggest wins"""
+        import datetime
+        # Setup mock trade history
+        today_str = datetime.datetime.now().date().isoformat()
+        yesterday_str = (datetime.datetime.now() - datetime.timedelta(days=1)).date().isoformat()
+        
+        self.bot.trade_history = [
+            {
+                'status': TradeStatus.EXITED.value,
+                'realized_pnl': 50.0,  # All-time biggest win
+                'closed_at': f"{yesterday_str}T12:00:00",
+                'type': 'regular'
+            },
+            {
+                'status': TradeStatus.EXITED.value,
+                'realized_pnl': 20.0,
+                'closed_at': f"{today_str}T08:00:00",
+                'type': 'regular'
+            },
+            {
+                'status': TradeStatus.EXITED.value,
+                'realized_pnl': 35.0,  # Today's biggest win
+                'closed_at': f"{today_str}T14:00:00",
+                'type': 'regular'
+            },
+            {
+                'status': TradeStatus.EXITED.value,
+                'realized_pnl': -15.0,  # Loss - shouldn't count towards wins
+                'closed_at': f"{today_str}T16:00:00",
+                'type': 'regular'
+            }
+        ]
+
+        self.bot.update_performance_metrics()
+
+        # Check all-time and today biggest wins
+        self.assertEqual(self.bot.performance_metrics['biggest_win_history'], 50.0)
+        self.assertEqual(self.bot.performance_metrics['biggest_win_today'], 35.0)
+
     def test_update_positions_from_trades_empty(self):
         """Test position updates with empty trade history"""
         # Should not crash
@@ -220,6 +260,166 @@ class TestTradingBot(unittest.TestCase):
             success = False
             print(f"Error: {e}")
         self.assertTrue(success)
+
+    def test_whale_tracker_model(self):
+        """Test WhaleTrackerModel probability adjustments"""
+        from strategies.example_strategy import WhaleTrackerModel
+        
+        # Test case 1: NO whale positions -> returns current price (no change)
+        model = WhaleTrackerModel(whale_wallets=["0xWhale1", "0xWhale2"])
+        market = {"token_id": "TOKEN1", "current_price": 0.5, "conditionId": "COND1", "clobTokenIds": ["TOKEN1", "TOKEN2"]}
+        prob = model.estimate_probability(market)
+        self.assertEqual(prob, 0.5)
+
+        # Test case 2: Whales holding YES positions -> increases YES probability
+        fallback = {
+            "TOKEN1": {
+                "0xWhale1": {"size": 1000.0, "outcome": "YES"}
+            }
+        }
+        model_with_whale = WhaleTrackerModel(whale_wallets=["0xWhale1"], fallback_positions=fallback, impact_factor=0.05)
+        prob = model_with_whale.estimate_probability(market)
+        # net_skew = 1.0, impact = 0.05 -> adjusted prob = 0.5 + 0.05 = 0.55
+        self.assertAlmostEqual(prob, 0.55)
+
+        # Test case 3: Whales holding NO positions -> decreases YES probability
+        fallback_no = {
+            "TOKEN1": {
+                "0xWhale1": {"size": 1000.0, "outcome": "NO"}
+            }
+        }
+        model_with_whale_no = WhaleTrackerModel(whale_wallets=["0xWhale1"], fallback_positions=fallback_no, impact_factor=0.05)
+        prob = model_with_whale_no.estimate_probability(market)
+        # net_skew = -1.0, impact = 0.05 -> adjusted prob = 0.5 - 0.05 = 0.45
+        self.assertAlmostEqual(prob, 0.45)
+
+    def test_manage_open_limit_orders_filled(self):
+        """Test active limit order lifecycle manager marking orders as filled"""
+        self.bot.use_limit_orders = True
+        token_id = "TOKEN_TEST"
+        order_id = "dry_test_123"
+        
+        # Mock API and trades
+        self.bot.trade_history = [
+            {
+                "order_id": order_id,
+                "token_id": token_id,
+                "status": "dry_run",
+                "execution_price": 0.5,
+                "size": 1000.0,
+                "direction": "BUY YES",
+                "category": "Crypto"
+            }
+        ]
+        
+        self.bot.limit_quoter._open_quotes[token_id] = {
+            "order_id": order_id,
+            "side": "BUY",
+            "size": 1000.0,
+            "price": 0.5,
+            "timestamp": 123456
+        }
+        
+        # Mock api.get_price to return 0.45 (which is below limit_price 0.5 for BUY)
+        with patch.object(self.bot.api, 'get_price', return_value=0.45):
+            self.bot.manage_open_limit_orders()
+            
+        # Order should be filled
+        self.assertEqual(self.bot.trade_history[0]["status"], TradeStatus.FILLED.value)
+        self.assertNotIn(token_id, self.bot.limit_quoter.open_quotes)
+        # Position should be added to risk manager
+        self.assertIn(token_id, self.bot.risk_manager.positions)
+        self.assertEqual(self.bot.risk_manager.positions[token_id]["size"], 1000.0)
+
+    def test_manage_open_limit_orders_requote(self):
+        """Test active limit order lifecycle manager requoting when price moves"""
+        self.bot.use_limit_orders = True
+        token_id = "TOKEN_TEST"
+        order_id = "dry_test_123"
+        
+        # Mock API and trades
+        self.bot.trade_history = [
+            {
+                "order_id": order_id,
+                "token_id": token_id,
+                "status": "dry_run",
+                "execution_price": 0.5,
+                "size": 1000.0,
+                "direction": "BUY YES",
+                "category": "Crypto"
+            }
+        ]
+        
+        self.bot.limit_quoter._open_quotes[token_id] = {
+            "order_id": order_id,
+            "side": "BUY",
+            "size": 1000.0,
+            "price": 0.5,
+            "timestamp": 123456
+        }
+        
+        # Mock api.get_price to return 0.55 (not filled for BUY at 0.5)
+        # Mock limit_quoter.requote to return a new requoted order
+        mock_requote_res = {
+            "status": "dry_run",
+            "order_id": "dry_test_456",
+            "price": 0.53
+        }
+        
+        with patch.object(self.bot.api, 'get_price', return_value=0.55):
+            with patch.object(self.bot.limit_quoter, 'requote', return_value=mock_requote_res):
+                self.bot.manage_open_limit_orders()
+                
+        # Trade history entry should be updated with new order ID and new execution price
+        self.assertEqual(self.bot.trade_history[0]["order_id"], "dry_test_456")
+        self.assertEqual(self.bot.trade_history[0]["execution_price"], 0.53)
+
+    def test_yes_no_arb_depth_scanning(self):
+        """Test yes/no arbitrage scanner's multi-level book depth walk"""
+        from strategies.yes_no_arb import YesNoArbScanner
+        
+        scanner = YesNoArbScanner(fee_buffer=0.01, max_per_market=0.1, min_edge=0.01)
+        
+        # Mock order books with multiple levels
+        # Buying 1000 shares
+        orderbook_yes = {
+            "asks": [
+                {"price": 0.40, "size": 200.0},  # First level
+                {"price": 0.42, "size": 800.0}   # Second level
+            ]
+        }
+        orderbook_no = {
+            "asks": [
+                {"price": 0.50, "size": 500.0},  # First level
+                {"price": 0.52, "size": 500.0}   # Second level
+            ]
+        }
+        
+        # Walk YES book for 1000 shares:
+        # 200 * 0.40 = 80
+        # 800 * 0.42 = 336
+        # Total cost = 416 -> average price = 0.416
+        yes_avg, yes_filled = scanner._walk_book(orderbook_yes["asks"], 1000.0)
+        self.assertAlmostEqual(yes_avg, 0.416)
+        self.assertEqual(yes_filled, 1000.0)
+        
+        # Walk NO book for 1000 shares:
+        # 500 * 0.50 = 250
+        # 500 * 0.52 = 260
+        # Total cost = 510 -> average price = 0.51
+        no_avg, no_filled = scanner._walk_book(orderbook_no["asks"], 1000.0)
+        self.assertAlmostEqual(no_avg, 0.51)
+        self.assertEqual(no_filled, 1000.0)
+        
+        # Test full scan with depth
+        market = {"conditionId": "COND1", "question": "Test Arb question", "clobTokenIds": ["YES_T", "NO_T"]}
+        signal = scanner.scan(market, orderbook_yes, orderbook_no, capital=10000.0)
+        
+        self.assertIsNotNone(signal)
+        # Average sum price = 0.416 + 0.51 = 0.926
+        # Edge = 1.0 - 0.926 - 0.01 (fee) = 0.064 (6.4%)
+        self.assertAlmostEqual(signal.sum_price, 0.926)
+        self.assertAlmostEqual(signal.edge, 0.064)
 
 
 if __name__ == '__main__':

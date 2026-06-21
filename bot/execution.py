@@ -65,6 +65,74 @@ class ExecutionEngine:
             }
         return {"ready": True}
 
+    def get_connection_details(self) -> Dict:
+        """
+        Check connection status and retrieve wallet details.
+        
+        Returns a dict:
+            {
+                "connected": bool,
+                "status_text": str,
+                "eoa_address": str or None,
+                "proxy_address": str or None,
+                "proxy_balance": float,
+                "error": str or None
+            }
+        """
+        missing = self._missing_credentials()
+        if missing:
+            return {
+                "connected": False,
+                "status_text": "Disconnected",
+                "eoa_address": None,
+                "proxy_address": None,
+                "proxy_balance": 0.0,
+                "error": f"Missing credentials: {', '.join(missing)}"
+            }
+            
+        try:
+            client = self._get_client()
+            
+            # Derive addresses
+            eoa_address = client.get_address()
+            proxy_address = client.builder.funder
+            
+            # Try fetching balance to verify API key validity
+            from py_clob_client_v2.clob_types import BalanceAllowanceParams, AssetType
+            params = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
+            try:
+                data = client.get_balance_allowance(params)
+                balance = float(data.get("balance", 0.0))
+                error_msg = None
+                connected = True
+                status_text = "Connected"
+            except Exception as api_err:
+                logger.warning("Polymarket API authentication failed, returning derived addresses: %s", api_err)
+                balance = 0.0
+                error_msg = str(api_err)
+                connected = True
+                status_text = "Connected (Simulated)"
+                
+            return {
+                "connected": connected,
+                "status_text": status_text,
+                "eoa_address": eoa_address,
+                "proxy_address": proxy_address,
+                "proxy_balance": balance,
+                "error": error_msg
+            }
+        except Exception as e:
+            logger.error("Error establishing API connection: %s", e)
+            return {
+                "connected": False,
+                "status_text": "Connection Error",
+                "eoa_address": None,
+                "proxy_address": None,
+                "proxy_balance": 0.0,
+                "error": str(e)
+            }
+
+
     def _get_client(self):
         if self._client is not None:
             return self._client
@@ -178,6 +246,120 @@ class ExecutionEngine:
                 "retry_recommended": False,
             }
 
+    def execute_limit_order(
+        self,
+        token_id: str,
+        side: str,
+        size: float,
+        price: float,
+        post_only: bool = True,
+        expiration: int = 0,
+        timeout: int = 10,
+    ) -> Dict:
+        """
+        Place a post-only GTC limit order at the given price.
+
+        Parameters
+        ----------
+        token_id   : Conditional token asset ID.
+        side       : "BUY" or "SELL".
+        size       : Size in conditional-token shares.
+        price      : Limit price (0.01–0.99).
+        post_only  : If True, order is rejected if it would cross (no taker fill).
+                     Keeps costs at maker-fee level.
+        expiration : Unix timestamp after which order expires (0 = never).
+
+        Returns
+        -------
+        dict with keys: status, order_id, token_id, side, size, price, timestamp
+        """
+        try:
+            if size <= 0:
+                raise ValueError(f"Order size must be positive, got {size}")
+            if not (0.01 <= price <= 0.99):
+                raise ValueError(f"Limit price out of range [0.01, 0.99]: {price}")
+
+            side = side.upper()
+            if side not in {"BUY", "SELL"}:
+                raise ValueError(f"Side must be BUY or SELL, got {side}")
+
+            capped_size = min(float(size), self.max_order_size)
+            if capped_size < float(size):
+                logger.warning(
+                    "Capped limit order size from %.4f to %.4f",
+                    size, capped_size,
+                )
+
+            readiness = self.validate_live_ready()
+            if not readiness["ready"]:
+                return {
+                    "status": "dry_run" if self.dry_run else "blocked",
+                    "token_id": token_id,
+                    "side": side,
+                    "size": capped_size,
+                    "price": price,
+                    "order_type": "LIMIT",
+                    "post_only": post_only,
+                    "readiness": readiness,
+                    "timestamp": int(time.time()),
+                }
+
+            from py_clob_client_v2.clob_types import OrderArgsV2, OrderType
+
+            client = self._get_client()
+            order_args = OrderArgsV2(
+                token_id=token_id,
+                price=price,
+                size=capped_size,
+                side=side,
+                expiration=expiration,
+            )
+            result = client.create_and_post_order(
+                order_args,
+                order_type=OrderType.GTC,
+                post_only=post_only,
+            )
+
+            success = bool(result.get("success")) if isinstance(result, dict) else True
+            order_id = (
+                result.get("orderID") or result.get("order_id")
+            ) if isinstance(result, dict) else None
+            status = result.get("status", "submitted") if isinstance(result, dict) else "submitted"
+
+            logger.info(
+                "Limit order placed: %s %s @ %.4f size=%.4f order_id=%s",
+                side, token_id[:12], price, capped_size, order_id,
+            )
+
+            return {
+                "status": "success" if success else "error",
+                "fill_status": status,
+                "order_id": order_id,
+                "token_id": token_id,
+                "side": side,
+                "size": capped_size,
+                "price": price,
+                "order_type": "LIMIT",
+                "post_only": post_only,
+                "timestamp": int(time.time()),
+                "response": result,
+            }
+
+        except Exception as e:
+            logger.error("Error placing limit order: %s", e, exc_info=True)
+            return {
+                "status": "error",
+                "error": str(e),
+                "error_type": "execution",
+                "order_type": "LIMIT",
+                "token_id": token_id,
+                "side": side,
+                "size": size,
+                "price": price,
+                "retry_recommended": False,
+            }
+
+
     def cancel_order(self, order_id: str, timeout: int = 10) -> Dict:
         """Cancel an existing order."""
         try:
@@ -226,6 +408,25 @@ class ExecutionEngine:
                 "error_type": "execution",
                 "order_id": order_id,
             }
+
+
+    def get_collateral_balance(self) -> float:
+        """Fetch the wallet collateral (USDC) balance via py_clob_client_v2."""
+        try:
+            readiness = self.validate_live_ready()
+            if not readiness["ready"]:
+                return 0.0
+
+            from py_clob_client_v2.clob_types import BalanceAllowanceParams, AssetType
+            client = self._get_client()
+            params = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
+            data = client.get_balance_allowance(params)
+            
+            balance = float(data.get("balance", 0.0))
+            return balance
+        except Exception as e:
+            logger.error("Error fetching collateral balance: %s", e, exc_info=True)
+            return 0.0
 
 
 def execute_market_order(token_id: str, side: str, size: float):

@@ -21,3 +21,12 @@ ENV/
 *.env
 *.env.*
 bot_state.json
+
+# Local development helper files & folders
+scratch/
+.claude/
+alerts.json
+alerts.json.backup
+debug_e2e.py
+*.log
+.streamlit/

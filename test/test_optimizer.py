@@ -40,5 +40,11 @@ class TestOptimizer(unittest.TestCase):
             self.assertLessEqual(a, self.constraints.max_single_position + 1e-6)
             self.assertGreaterEqual(a, 0)
 
+    def test_slippage_awareness(self):
+        """Test that slippage-aware optimization scales down positions when capital is high or liquidity is low"""
+        allocations_low, _, _ = self.optimizer.optimize(self.markets, self.constraints, capital=1000.0)
+        allocations_high, _, _ = self.optimizer.optimize(self.markets, self.constraints, capital=1000000.0)
+        self.assertLessEqual(np.sum(allocations_high), np.sum(allocations_low) + 1e-5)
+
 if __name__ == '__main__':
     unittest.main()
