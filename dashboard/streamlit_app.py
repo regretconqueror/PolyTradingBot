@@ -244,14 +244,6 @@ st.markdown("""
         font-family: 'Space Grotesk', sans-serif;
     }
 
-    /* Popover (wallet details menu) */
-    [data-testid="stPopoverBody"] {
-        max-width: 180px !important;
-        min-width: 0px !important;
-        padding: 14px !important;
-        background: var(--bg-card) !important;
-        border: 1px solid var(--border) !important;
-    }
 
     /* Footer */
     .dashboard-footer {
@@ -666,6 +658,25 @@ def create_risk_gauge(risk_metrics, layout=DARK_LAYOUT, theme_mode="Dark Mode"):
     fig.update_layout(**layout, height=280)
     return fig
 
+def highlight_edge(val):
+    """Highlight edge column: green for positive edge, light red for negative edge."""
+    try:
+        if isinstance(val, str):
+            if '%' in val:
+                numeric_val = float(val.replace('%', '')) / 100.0
+            else:
+                numeric_val = float(val)
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val > 0.001:
+            return 'background-color: #d4edda; color: #155724;'
+        elif numeric_val < -0.001:
+            return 'background-color: #f8d7da; color: #721c24;'
+    except:
+        pass
+    return ''
+
 def display_market_table(markets_df):
     """Display the markets data in an interactive table"""
     if markets_df.empty:
@@ -675,21 +686,6 @@ def display_market_table(markets_df):
     # Select columns to display
     display_columns = ['Market', 'Category', 'Current Price', 'Your Probability', 'Edge', 'Liquidity', 'Volume 24h']
     display_df = markets_df[display_columns].copy()
-
-    # Style the dataframe
-    def highlight_edge(val):
-        if isinstance(val, str) and '%' in val:
-            try:
-                numeric_val = float(val.replace('%', ''))
-                if numeric_val > 0.1:
-                    return 'background-color: #d4edda'
-                elif numeric_val < -0.1:
-                    return 'background-color: #f8d7da'
-                else:
-                    return ''
-            except:
-                return ''
-        return ''
 
     styled_df = display_df.style.map(highlight_edge, subset=['Edge'])
     st.dataframe(
@@ -734,14 +730,16 @@ def display_allocations_table(allocations_df):
     display_columns = ['Market', 'Direction', 'Size ($)', 'Allocation (%)', 'Market Price', 'Your Probability', 'Edge']
     display_df = allocations_df[display_columns].copy() if all(col in allocations_df.columns for col in display_columns) else allocations_df
 
+    styled_df = display_df.style.format({
+        'Size ($)': '${:,.2f}',
+        'Allocation (%)': '{:.1f}%',
+        'Market Price': '{:.1%}',
+        'Your Probability': '{:.1%}',
+        'Edge': '{:.1%}'
+    }).map(highlight_edge, subset=['Edge'])
+
     st.dataframe(
-        display_df.style.format({
-            'Size ($)': '${:,.2f}',
-            'Allocation (%)': '{:.1f}%',
-            'Market Price': '{:.1%}',
-            'Your Probability': '{:.1%}',
-            'Edge': '{:.1%}'
-        }),
+        styled_df,
         use_container_width=True
     )
 
@@ -1033,74 +1031,58 @@ def main():
         render_header_time()
 
     with col_right:
-        status_col, menu_col = st.columns([4, 1])
-        with status_col:
-            if conn.get("connected"):
-                proxy_short = f"{conn['proxy_address'][:6]}...{conn['proxy_address'][-4:]}" if conn.get('proxy_address') else "Unknown Proxy"
-                badge_html = f'''
-                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px; padding-top:4px;">
-                    <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(16,185,129,0.1); border:1px solid #10b981; color:#10b981; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                        <span class="status-dot live"></span>
-                        {conn.get("status_text", "Connected")}
-                    </span>
-                    <span style="font-family:monospace; font-size:0.72rem; color:#888;">
-                        Proxy: {proxy_short}
-                    </span>
-                    <span style="font-family:monospace; font-size:0.82rem; color:#00e676 !important; font-weight:700; margin-top:2px; display:inline-flex; align-items:center; gap:4px;">
-                        💰 {conn.get('proxy_balance', 0.0):,.2f} USDC
-                    </span>
-                </div>
-                '''
-                st.markdown(badge_html, unsafe_allow_html=True)
-            else:
-                badge_html = f'''
-                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px; padding-top:4px;">
-                    <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(92,96,128,0.1); border:1px solid #ff4444; color:#ff4444; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                        <span class="status-dot off"></span>
-                        {conn.get("status_text", "Disconnected")}
-                    </span>
-                    <span style="font-family:sans-serif; font-size:0.72rem; color:#ff4444;">
-                        API Offline
-                    </span>
-                    <span style="font-family:monospace; font-size:0.82rem; color:#00e676 !important; font-weight:700; margin-top:2px; display:inline-flex; align-items:center; gap:4px;">
-                        💰 {conn.get('proxy_balance', 0.0):,.2f} USDC
-                    </span>
-                </div>
-                '''
-                st.markdown(badge_html, unsafe_allow_html=True)
-        with menu_col:
-            # Display 3-dots popover dropdown
-            with st.popover("⋮", help="Wallet & Proxy Details"):
-                eoa = conn.get("eoa_address") or "Not Available"
-                proxy = conn.get("proxy_address") or "Not Available"
-                
-                # Shorten addresses
-                eoa_short = f"{eoa[:6]}...{eoa[-4:]}" if len(eoa) > 10 else eoa
-                proxy_short = f"{proxy[:6]}...{proxy[-4:]}" if len(proxy) > 10 else proxy
-                
-                popover_html = f"""
-                <div style="font-family: Space Grotesk, sans-serif; display: flex; flex-direction: column; gap: 6px; padding-bottom: 6px;">
-                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-bright); border-bottom: 1px solid var(--border); padding-bottom: 2px; margin-bottom: 2px;">
-                        💼 Wallet Details
-                    </div>
-                    <div>
-                        <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">EOA Wallet</div>
-                        <code style="font-family: JetBrains Mono, monospace; font-size: 0.75rem; color: var(--accent-purple); background: rgba(167, 139, 250, 0.06); border: 1px solid rgba(167, 139, 250, 0.15); border-radius: 6px; padding: 4px 8px; display: inline-block; margin-top: 2px;">{eoa_short}</code>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Proxy Wallet</div>
-                        <code style="font-family: JetBrains Mono, monospace; font-size: 0.75rem; color: var(--accent-cyan); background: rgba(34, 211, 238, 0.06); border: 1px solid rgba(34, 211, 238, 0.15); border-radius: 6px; padding: 4px 8px; display: inline-block; margin-top: 2px;">{proxy_short}</code>
-                    </div>
-                </div>
-                """
-                st.markdown(popover_html, unsafe_allow_html=True)
-                if conn.get("error"):
-                    st.warning(f"**Notice:** {conn['error']}")
+        if conn.get("connected"):
+            proxy_short = f"{conn['proxy_address'][:6]}...{conn['proxy_address'][-4:]}" if conn.get('proxy_address') else "Unknown Proxy"
+            badge_html = f'''
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px; padding-top:4px;">
+                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(16,185,129,0.1); border:1px solid #10b981; color:#10b981; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                    <span class="status-dot live"></span>
+                    {conn.get("status_text", "Connected")}
+                </span>
+                <span style="font-family:monospace; font-size:0.72rem; color:#888;">
+                    Proxy: {proxy_short}
+                </span>
+                <span style="font-family:monospace; font-size:0.82rem; color:#00e676 !important; font-weight:700; margin-top:2px; display:inline-flex; align-items:center; gap:4px;">
+                    💰 {conn.get('proxy_balance', 0.0):,.2f} USDC
+                </span>
+            </div>
+            '''
+            st.markdown(badge_html, unsafe_allow_html=True)
+        else:
+            badge_html = f'''
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px; padding-top:4px;">
+                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(92,96,128,0.1); border:1px solid #ff4444; color:#ff4444; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                    <span class="status-dot off"></span>
+                    {conn.get("status_text", "Disconnected")}
+                </span>
+                <span style="font-family:sans-serif; font-size:0.72rem; color:#ff4444;">
+                    API Offline
+                </span>
+                <span style="font-family:monospace; font-size:0.82rem; color:#00e676 !important; font-weight:700; margin-top:2px; display:inline-flex; align-items:center; gap:4px;">
+                    💰 {conn.get('proxy_balance', 0.0):,.2f} USDC
+                </span>
+            </div>
+            '''
+            st.markdown(badge_html, unsafe_allow_html=True)
 
     st.markdown("""<hr class="section-line">""", unsafe_allow_html=True)
 
     # Sidebar controls
     st.sidebar.header("⚙️ Controls")
+
+    # Wallet Details Expander
+    with st.sidebar.expander("💼 Wallet Details", expanded=False):
+        eoa = conn.get("eoa_address") or "Not Available"
+        proxy = conn.get("proxy_address") or "Not Available"
+        
+        st.markdown("<span style='font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;'>EOA Wallet</span>", unsafe_allow_html=True)
+        st.code(eoa, language=None)
+        
+        st.markdown("<span style='font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;'>Proxy Wallet</span>", unsafe_allow_html=True)
+        st.code(proxy, language=None)
+        
+        if conn.get("error"):
+            st.warning(f"**Notice:** {conn['error']}")
 
     # Auto-refresh option
     auto_refresh = st.sidebar.checkbox("Auto Refresh (30s)", value=False)
