@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 import logging
 import json
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -724,161 +725,265 @@ def display_allocations_table(allocations_df):
         use_container_width=True
     )
 
-def render_crypto_scalper_tab(bot):
-    """Render the Crypto 5-Min Scalper dashboard tab.
+def fetch_5min_crypto_events():
+    """Fetch active 5-minute prediction contracts from Polymarket API (tag_id=102892)"""
+    try:
+        url = "https://gamma-api.polymarket.com/events?active=true&tag_id=102892&limit=100"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            events = response.json()
+            return [e for e in events if e.get("active") and e.get("markets")]
+    except Exception as e:
+        logger.error(f"Failed to fetch 5min crypto events: {e}")
+    return []
 
-    This is a simulated/demo tab: BTC spot price is random-walked in
-    session_state and a Polymarket-style YES price is derived from it via a
-    sigmoid centered on the $65,500 strike. Faithful to the original design.
-    """
+
+def render_crypto_markets_tab(bot):
+    """Render the Crypto Markets tab showing 5-minute contracts for major coins."""
     import random
-
-    section_header("Crypto 5-Min Scalper", "Short-term momentum & volatility sniping on Bitcoin outcomes")
-
-    # 1. Layout & Live indicators
-    c_status, c_ticker, c_timer = st.columns([1, 1.2, 1.2])
-
-    with c_status:
-        st.markdown("""
-        <div class="live-indicator">
-            <span class="status-dot err" style="width:10px;height:10px;margin:0;"></span>
-            LIVE SCALPING ACTIVE
-        </div>
-        """, unsafe_allow_html=True)
-        st.caption("Monitoring 5-min order book inefficiencies")
-
-    with c_ticker:
-        if 'scalper_btc_price' not in st.session_state:
-            st.session_state['scalper_btc_price'] = 65420.50
-        if 'scalper_btc_anchor' not in st.session_state:
-            st.session_state['scalper_btc_anchor'] = 65420.50
-
-        # Smaller random walk per render for realism
-        st.session_state['scalper_btc_price'] = max(
-            10000.0, st.session_state['scalper_btc_price'] + random.uniform(-6.0, 6.0)
-        )
-        btc_price = st.session_state['scalper_btc_price']
-        anchor = st.session_state['scalper_btc_anchor']
-
-        change_pct = ((btc_price - anchor) / anchor) * 100
-        color = "positive" if change_pct >= 0 else "negative"
-        sign = "+" if change_pct >= 0 else ""
-
-        st.markdown(f"""
-        <div class="vibe-card" style="padding: 10px 15px; border-radius: 8px;">
-            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-family: Space Grotesk;">BTC Spot Price</div>
-            <div style="font-size: 1.2rem; font-weight: 700; font-family: JetBrains Mono; color: var(--text-bright);">
-                ${btc_price:,.2f}
-                <span class="{color}" style="font-size: 0.8rem; font-weight: 600; margin-left: 6px;">
-                    {sign}{change_pct:.2f}%
+    
+    section_header("Crypto markets", "Active 5-minute prediction contracts across major assets")
+    
+    # 1. Fetch live events
+    live_events = fetch_5min_crypto_events()
+    
+    # 2. Group and find the latest event for each coin
+    COINS = {
+        "Bitcoin": {"emoji": "🪙", "color": "#e28743", "slug_pattern": "btc-up", "label": "BTC"},
+        "Ethereum": {"emoji": "🔷", "color": "#2563eb", "slug_pattern": "eth-up", "label": "ETH"},
+        "Solana": {"emoji": "☀️", "color": "#8b5cf6", "slug_pattern": "sol-up", "label": "SOL"},
+        "XRP": {"emoji": "💧", "color": "#06b6d4", "slug_pattern": "xrp-up", "label": "XRP"}
+    }
+    
+    coin_data = {}
+    
+    # Walk through the configured coins and match them to fetched events
+    for coin_name, info in COINS.items():
+        matched_event = None
+        # Try to find an event that matches the slug pattern
+        for event in live_events:
+            slug = event.get("seriesSlug") or event.get("slug") or ""
+            if info["slug_pattern"] in slug.lower():
+                # Take the latest matching event by start date or end date
+                if matched_event is None or event.get("startDate", "") > matched_event.get("startDate", ""):
+                    matched_event = event
+        
+        # If we matched an event, extract market details
+        if matched_event and matched_event.get("markets"):
+            market = matched_event["markets"][0]
+            prices_raw = market.get("outcomePrices")
+            prices = [0.5, 0.5]
+            if isinstance(prices_raw, str):
+                try:
+                    prices = json.loads(prices_raw)
+                except:
+                    pass
+            elif isinstance(prices_raw, list):
+                prices = prices_raw
+            
+            try:
+                yes_price = float(prices[0]) * 100 if len(prices) > 0 else 50.0
+                no_price = float(prices[1]) * 100 if len(prices) > 1 else 50.0
+            except:
+                yes_price, no_price = 50.0, 50.0
+                
+            coin_data[coin_name] = {
+                "live": True,
+                "question": market.get("question", f"{coin_name} Price Contract"),
+                "yes_price": yes_price,
+                "no_price": no_price,
+                "accepting_orders": market.get("acceptingOrders", False),
+                "token_id": market.get("clobTokenIds", ["", ""])[0] if isinstance(market.get("clobTokenIds"), list) else json.loads(market.get("clobTokenIds", "[\"\", \"\"]"))[0]
+            }
+        else:
+            # Fallback to simulated pricing
+            # To make it dynamic, we walk it in session state
+            sim_state_key = f"sim_price_{coin_name}"
+            if sim_state_key not in st.session_state:
+                st.session_state[sim_state_key] = random.uniform(40.0, 60.0)
+            
+            st.session_state[sim_state_key] = max(1.0, min(99.0, st.session_state[sim_state_key] + random.uniform(-2.0, 2.0)))
+            yes_p = st.session_state[sim_state_key]
+            no_p = 100.0 - yes_p
+            
+            coin_data[coin_name] = {
+                "live": False,
+                "question": f"Will {coin_name} be UP or DOWN at the next 5-minute candle close?",
+                "yes_price": yes_p,
+                "no_price": no_p,
+                "accepting_orders": True,
+                "token_id": f"sim_token_{coin_name}"
+            }
+            
+    # 3. Render 4 columns of tiles
+    col1, col2, col3, col4 = st.columns(4)
+    cols = [col1, col2, col3, col4]
+    
+    # Focused coin selection state
+    if "focused_coin" not in st.session_state:
+        st.session_state["focused_coin"] = "Bitcoin"
+        
+    for idx, (coin_name, data) in enumerate(coin_data.items()):
+        info = COINS[coin_name]
+        is_accepting = data["accepting_orders"]
+        
+        status_text = "Accepting Orders" if is_accepting else "Locked/Settling"
+        status_bg = "rgba(16, 185, 129, 0.12)" if is_accepting else "rgba(148, 163, 184, 0.12)"
+        status_color = "#10b981" if is_accepting else "#94a3b8"
+        
+        # Highlight border if focused
+        is_focused = st.session_state["focused_coin"] == coin_name
+        border_style = f"2px solid {info['color']}" if is_focused else "1px solid var(--border)"
+        box_shadow = f"0 0 12px {info['color']}33" if is_focused else "0 4px 6px -1px rgba(0,0,0,0.1)"
+        
+        html_card = f"""
+        <div class="vibe-card" style="padding: 16px; border-radius: var(--radius-lg); border: {border_style}; 
+                    display: flex; flex-direction: column; gap: 8px; 
+                    box-shadow: {box_shadow}; transition: all 0.2s ease-in-out;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 700; font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem; color: {info['color']};">
+                    {info['emoji']} {coin_name}
+                </span>
+                <span style="font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; 
+                             background: {status_bg}; color: {status_color}; text-transform: uppercase;">
+                    {status_text}
                 </span>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c_timer:
-        if 'scalper_seconds_left' not in st.session_state:
-            st.session_state['scalper_seconds_left'] = 300
-        else:
-            st.session_state['scalper_seconds_left'] = st.session_state['scalper_seconds_left'] - 1
-            if st.session_state['scalper_seconds_left'] <= 0:
-                st.session_state['scalper_seconds_left'] = 300
-
-        secs = st.session_state['scalper_seconds_left']
-        mins = secs // 60
-        rem_secs = secs % 60
-        progress_val = secs / 300.0
-
-        st.markdown(f"""
-        <div class="vibe-card" style="padding: 10px 15px; border-radius: 8px;">
-            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-family: Space Grotesk;">Current Candle Time Left</div>
-            <div style="font-size: 1.2rem; font-weight: 700; font-family: JetBrains Mono; color: var(--accent-cyan);">
-                {mins:02d}m {rem_secs:02d}s
+            <div style="font-size: 0.76rem; color: var(--text-secondary); line-height: 1.35; min-height: 2.8rem; font-family: 'Inter', sans-serif;">
+                {data['question']}
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <div style="flex: 1; text-align: center; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.15); border-radius: 8px; padding: 6px 2px;">
+                    <div style="font-size: 0.6rem; color: var(--accent-green); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">YES Price</div>
+                    <div style="font-size: 1.25rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--accent-green);">{data['yes_price']:.1f}¢</div>
+                </div>
+                <div style="flex: 1; text-align: center; background: rgba(251, 113, 133, 0.08); border: 1px solid rgba(251, 113, 133, 0.15); border-radius: 8px; padding: 6px 2px;">
+                    <div style="font-size: 0.6rem; color: var(--accent-rose); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">NO Price</div>
+                    <div style="font-size: 1.25rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--accent-rose);">{data['no_price']:.1f}¢</div>
+                </div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
-        st.progress(progress_val)
+        """
+        
+        with cols[idx]:
+            st.markdown(html_card, unsafe_allow_html=True)
+            st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
+            if st.button(f"🔍 Select {coin_name}", key=f"focus_{coin_name}", use_container_width=True):
+                st.session_state["focused_coin"] = coin_name
+                st.rerun()
 
+    # 4. Detailed Chart View section
     st.markdown("---")
-
-    # 2. Polymarket-style line chart
-    # Correlate YES price to spot BTC price using a sigmoid centered on $65,500.
-    prob_val = 100.0 / (1.0 + np.exp(-0.015 * (btc_price - 65500.0)))
-    yes_price = max(1.0, min(99.0, prob_val + random.uniform(-1.0, 1.0)))
-
-    if 'scalper_chart_data' not in st.session_state:
-        timestamps = [datetime.now() - timedelta(seconds=i) for i in range(150)]
-        timestamps.reverse()
-        prices = []
-        temp_btc = 65420.50
+    focused_coin = st.session_state["focused_coin"]
+    focused_data = coin_data[focused_coin]
+    focused_info = COINS[focused_coin]
+    
+    # Store price history data in session state for charting
+    history_key = f"price_history_{focused_coin}"
+    if history_key not in st.session_state:
+        # Prepopulate with 150 points
+        prices_list = []
+        current_price = focused_data["yes_price"]
+        temp_price = current_price
         for _ in range(150):
-            temp_btc = max(10000.0, temp_btc + random.uniform(-6.0, 6.0))
-            pv = 100.0 / (1.0 + np.exp(-0.015 * (temp_btc - 65500.0)))
-            prices.append(max(1.0, min(99.0, pv + random.uniform(-1.0, 1.0))))
-        st.session_state['scalper_chart_data'] = pd.DataFrame({
+            temp_price = max(1.0, min(99.0, temp_price + random.uniform(-1.5, 1.5)))
+            prices_list.append(temp_price)
+        prices_list.reverse()
+        
+        timestamps = [datetime.now() - timedelta(seconds=i * 2) for i in range(150)]
+        timestamps.reverse()
+        
+        st.session_state[history_key] = pd.DataFrame({
             'Time': timestamps,
-            'YES Price (¢)': prices
+            'YES Price (¢)': prices_list
         })
     else:
+        # Tick the price and append it
+        df = st.session_state[history_key]
         now = datetime.now()
-        df = st.session_state['scalper_chart_data']
-        new_row = pd.DataFrame({'Time': [now], 'YES Price (¢)': [yes_price]})
+        current_price = focused_data["yes_price"]
+        current_price_ticked = max(1.0, min(99.0, current_price + random.uniform(-0.5, 0.5)))
+        
+        new_row = pd.DataFrame({'Time': [now], 'YES Price (¢)': [current_price_ticked]})
         df = pd.concat([df, new_row]).iloc[-150:]
-        st.session_state['scalper_chart_data'] = df
-
-    df = st.session_state['scalper_chart_data']
-
-    c_chart, c_order_details = st.columns([2.2, 1])
-
+        st.session_state[history_key] = df
+        
+    df = st.session_state[history_key]
+    price_change = df['YES Price (¢)'].iloc[-1] - df['YES Price (¢)'].iloc[0]
+    
+    c_chart, c_details = st.columns([2.2, 1])
+    
     with c_chart:
         st.markdown(
-            "<h4 style='margin:0 0 0.5rem;font-family:Space Grotesk;font-size:0.95rem;"
-            "color:var(--text-bright);'>Contract: Will BTC be above $65,500 at next expiry?</h4>",
+            f"<h4 style='margin:0 0 0.5rem;font-family:Space Grotesk;font-size:0.95rem;"
+            f"color:var(--text-bright);'>Contract: {focused_data['question']}</h4>",
             unsafe_allow_html=True
         )
+        
         fig = go.Figure()
+        line_color = '#10b981' if price_change >= 0 else '#ef4444'
+        fill_color = 'rgba(16, 185, 129, 0.06)' if price_change >= 0 else 'rgba(239, 68, 68, 0.06)'
+        
         fig.add_trace(go.Scatter(
             x=df['Time'],
             y=df['YES Price (¢)'],
             mode='lines',
-            line=dict(color='#ef4444', width=3, shape='spline'),
+            line=dict(color=line_color, width=3, shape='spline'),
             fill='tozeroy',
-            fillcolor='rgba(239, 68, 68, 0.06)',
+            fillcolor=fill_color,
             hovertemplate='Price: %{y:.1f}¢<br>Time: %{x|%H:%M:%S}<extra></extra>'
         ))
-        fig.update_layout(
+        
+        chart_layout = dict(plotly_layout)
+        chart_layout.update(
             xaxis=dict(
                 showgrid=False, zeroline=False,
                 tickformat='%H:%M:%S',
                 tickfont=dict(color='#8b8fa8', size=10)
             ),
             yaxis=dict(
-                showgrid=True, gridcolor='#2a2d42', zeroline=False,
+                showgrid=True, gridcolor='#2a2d42' if theme_mode == "Dark Mode" else '#cbd5e1', 
+                zeroline=False,
                 range=[0, 100],
                 tickfont=dict(color='#8b8fa8', size=10),
                 ticksuffix='¢'
             ),
             margin=dict(l=40, r=20, t=10, b=30),
-            height=280,
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            template='plotly_dark',
+            height=320,
             showlegend=False
         )
+        fig.update_layout(chart_layout)
         st.plotly_chart(fig, use_container_width=True, theme=None)
-
-    with c_order_details:
-        section_header("Order Details", "")
+        
+    with c_details:
+        section_header("Contract Details", "")
+        is_live_str = "🟢 Live Polymarket API" if focused_data["live"] else "ℹ️ Simulated Feed"
+        
         st.markdown(f"""
-        <div class="vibe-card" style="padding:12px 14px;border-radius:10px;margin-bottom:0.6rem;">
-            <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;">Suggested YES Buy</div>
-            <div style="font-size:1.05rem;font-weight:700;color:var(--accent-green);font-family:JetBrains Mono;">
-                {yes_price:.1f}¢
+        <div class="vibe-card" style="padding:14px; border-radius:10px; display:flex; flex-direction:column; gap:10px;">
+            <div>
+                <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;font-weight:600;">Selected Asset</div>
+                <div style="font-size:1.15rem;font-weight:700;color:{focused_info['color']};font-family:Space Grotesk;">
+                    {focused_info['emoji']} {focused_coin} ({focused_info['label']})
+                </div>
+            </div>
+            <div>
+                <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;font-weight:600;">Data Feed Source</div>
+                <div style="font-size:0.82rem;font-weight:600;color:var(--text-bright);font-family:sans-serif;margin-top:2px;">
+                    {is_live_str}
+                </div>
+            </div>
+            <div>
+                <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;font-weight:600;">Conditional Token ID</div>
+                <code style="font-family:JetBrains Mono,monospace;font-size:0.65rem;color:var(--accent-purple);
+                             background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.15);
+                             border-radius:6px;padding:3px 6px;display:block;margin-top:4px;word-break:break-all;white-space:normal;line-height:1.2;">
+                    {focused_data['token_id']}
+                </code>
             </div>
         </div>
         """, unsafe_allow_html=True)
-        st.caption(f"Derived from BTC spot ${btc_price:,.2f} via sigmoid model.")
-        st.caption("Demo tab — quotes are simulated for preview purposes.")
+        st.caption("Price contracts represent the binary outcome of the asset's 5-minute candle closing higher or lower than its opening level.")
 
 
 def main():
@@ -1065,7 +1170,7 @@ def main():
     # Main dashboard tabs
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "📊  Markets",
-        "🎯  Crypto 5-Min Scalper",
+        "🪙  Crypto markets",
         "💼  Portfolio",
         "📈  Performance",
         "⚠️  Risk",
@@ -1157,9 +1262,9 @@ def main():
                     fig_scatter.update_layout(**plotly_layout)
                     st.plotly_chart(fig_scatter, use_container_width=True)
 
-    # Tab 2: Crypto 5-Min Scalper
+    # Tab 2: Crypto markets
     with tab2:
-        render_crypto_scalper_tab(bot)
+        render_crypto_markets_tab(bot)
 
     # Tab 3: Portfolio
     with tab3:
