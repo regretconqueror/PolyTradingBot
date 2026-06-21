@@ -110,177 +110,14 @@ st.set_page_config(
 )
 
 # ─────────────────────────────────────────────────────────────────────
-# Dark "vibe" theme. Mirrors the colors configured in .streamlit/config.toml
-# so the injected CSS reinforces rather than fights the base theme.
-# ─────────────────────────────────────────────────────────────────────
-st.markdown("""
-<style>
-    :root {
-        --bg-surface: #191b27;
-        --bg-card: #1f2230;
-        --text-bright: #f5f6fa;
-        --text-secondary: #b4b8cc;
-        --text-muted: #8b8fa8;
-        --accent-purple: #a78bfa;
-        --accent-cyan: #22d3ee;
-        --accent-green: #10b981;
-        --accent-rose: #fb7185;
-        --border: #2a2d42;
-        --radius-lg: 14px;
-        --gradient-hero: linear-gradient(90deg, #a78bfa, #22d3ee);
-    }
-
-    /* Force the dark palette onto Streamlit primitives */
-    .stApp { background: #12131c; color: var(--text-secondary); }
-    section[data-testid="stSidebar"] { background: var(--bg-surface); }
-
-    .positive { color: var(--accent-green); }
-    .negative { color: var(--accent-rose); }
-    .neutral { color: #ffbb33; }
-
-    /* Metric cards */
-    [data-testid="stMetric"] {
-        background: var(--bg-card) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: var(--radius-lg) !important;
-        padding: 1rem 1.1rem !important;
-    }
-    [data-testid="stMetric"] [data-testid="stMetricLabel"] {
-        color: var(--text-muted) !important;
-        font-weight: 600 !important;
-        font-size: 0.7rem !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.12em !important;
-        font-family: 'Space Grotesk', sans-serif !important;
-    }
-    [data-testid="stMetric"] [data-testid="stMetricValue"],
-    [data-testid="stMetric"] [data-testid="stMetricValue"] div {
-        color: var(--text-bright) !important;
-        font-weight: 700 !important;
-        font-size: 1.6rem !important;
-        line-height: 1.2 !important;
-    }
-    [data-testid="stMetric"] [data-testid="stMetricDelta"] {
-        font-family: 'JetBrains Mono', monospace !important;
-        font-weight: 600 !important;
-        font-size: 0.85rem !important;
-    }
-
-    /* Tab bar */
-    [data-testid="stTabs"] {
-        background: var(--bg-surface) !important;
-        border-radius: var(--radius-lg) !important;
-        padding: 5px !important;
-        border: 1px solid var(--border) !important;
-        gap: 2px !important;
-    }
-
-    /* Section divider */
-    .section-line {
-        height: 2px;
-        background: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan), transparent);
-        border: none;
-        margin: 0.5rem 0 1.25rem;
-        border-radius: 1px;
-    }
-
-    /* Status dots (header + live indicators) */
-    .status-dot {
-        display: inline-block;
-        width: 6px; height: 6px;
-        border-radius: 50%;
-        margin-right: 6px;
-        animation: pulse-dot 1.8s infinite ease-in-out;
-    }
-    .status-dot.live { background: var(--accent-green); box-shadow: 0 0 8px rgba(16,185,129,0.5); }
-    .status-dot.off  { background: var(--text-muted); animation: none; }
-    .status-dot.err  { background: var(--accent-rose); box-shadow: 0 0 8px rgba(251,113,133,0.4); }
-    @keyframes pulse-dot {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.6; transform: scale(1.3); }
-    }
-
-    /* Vibe card (used by the Crypto Scalper widgets) */
-    .vibe-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-    }
-
-    .live-indicator {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: rgba(251,113,133,0.08);
-        border: 1px solid rgba(251,113,133,0.3);
-        color: var(--accent-rose);
-        border-radius: 8px;
-        padding: 6px 12px;
-        font-size: 0.78rem;
-        font-weight: 700;
-        font-family: 'Space Grotesk', sans-serif;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-    }
-
-    .gradient-text {
-        background: var(--gradient-hero);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    .header-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: rgba(139,92,246,0.1);
-        border: 1px solid rgba(139,92,246,0.2);
-        border-radius: 20px;
-        padding: 4px 12px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        color: var(--accent-purple);
-        font-family: 'Space Grotesk', sans-serif;
-    }
-
-
-    /* Footer */
-    .dashboard-footer {
-        text-align: center;
-        padding: 2rem 0 1rem;
-        color: var(--text-muted);
-        font-size: 0.8rem;
-        font-family: 'Space Grotesk', sans-serif;
-        border-top: 1px solid var(--border);
-        margin-top: 3rem;
-    }
-    .dashboard-footer a { color: var(--accent-purple); }
-
-    /* Subtle canvas noise texture overlay */
-    .stApp::before {
-        content: "";
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        pointer-events: none;
-        z-index: 0;
-        opacity: 0.015;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-        background-size: 128px 128px;
-    }
-</style>
-""", unsafe_allow_html=True)
-
+# UNIFIED THEME CSS — one block per mode, no cascading conflicts
+# ─────────────────────────────────────────────────────────────────----
 if theme_mode == "Light Mode":
     st.markdown("""
     <style>
-        :root {
-            /* Override official Streamlit theme variables to force light mode for widgets and Glide Grid */
-            --background-color:           #ffffff !important;
-            --secondary-background-color: #f1f5f9 !important;
-            --text-color:                 #0f172a !important;
-            --primary-color:              #8b5cf6 !important;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
+        :root {
             --bg-void:       #f8fafc;
             --bg-base:       #f1f5f9;
             --bg-surface:    #ffffff;
@@ -308,115 +145,542 @@ if theme_mode == "Light Mode":
             --accent-pink:   #db2777;
             --gradient-hero:  linear-gradient(135deg, #7c3aed 0%, #4f46e5 40%, #06b6d4 100%);
             --gradient-card:  linear-gradient(135deg, rgba(124,58,237,0.03) 0%, rgba(6,182,212,0.01) 100%);
-            --gradient-green: linear-gradient(135deg, #059669 0%, #10b981 100%);
-            --gradient-danger:linear-gradient(135deg, #dc2626 0%, #e11d48 100%);
-            --glow-purple:   0 0 20px rgba(124,58,237,0.05), 0 0 60px rgba(124,58,237,0.02);
-            --glow-green:    0 0 20px rgba(5,150,105,0.05), 0 0 60px rgba(5,150,105,0.02);
-            --glow-cyan:     0 0 20px rgba(6,182,212,0.05), 0 0 60px rgba(6,182,212,0.02);
+            --radius-lg: 14px;
+            --radius-md: 10px;
         }
 
-        /* ── Light Mode: Dropdown Menu overrides ────────────────────────── */
-        div[data-baseweb="menu"] {
-            background-color: #ffffff !important;
-            border: 1px solid #cbd5e1 !important;
-        }
-        div[data-baseweb="menu"] li, div[data-baseweb="menu"] div[role="option"] {
-            background-color: #ffffff !important;
-            color: #334155 !important;
-        }
-        div[data-baseweb="menu"] li:hover, div[data-baseweb="menu"] div[role="option"]:hover {
-            background-color: #f1f5f9 !important;
-            color: #7c3aed !important;
-        }
+        /* ── Global ────────────────────────────────────────────────────── */
+        .stApp { background: var(--bg-base) !important; color: var(--text-primary) !important;
+                 font-family: 'Inter', sans-serif !important; }
+        [data-testid="stHeader"] { background: rgba(255,255,255,0.85) !important;
+                                    backdrop-filter: blur(12px) !important;
+                                    border-bottom: 1px solid var(--border) !important; }
+        .positive { color: var(--accent-green) !important; }
+        .negative { color: var(--accent-rose) !important; }
+        .neutral  { color: var(--accent-amber) !important; }
 
-        /* ── Light Mode: Global Backgrounds ─────────────────────────── */
-        .stApp, [data-testid="stHeader"] {
-            background-color: var(--bg-base) !important;
-            color: var(--text-primary) !important;
-        }
-        [data-testid="stSidebar"] {
-            background-color: var(--bg-surface) !important;
-            border-right: 1px solid var(--border) !important;
-        }
+        /* ── Sidebar ────────────────────────────────────────────────────── */
+        section[data-testid="stSidebar"],
+        section[data-testid="stSidebar"] > div { background: var(--bg-surface) !important;
+                                                  border-right: 1px solid var(--border) !important; }
+        section[data-testid="stSidebar"] label,
+        section[data-testid="stSidebar"] span,
+        section[data-testid="stSidebar"] p { color: var(--text-primary) !important; }
 
-        /* ── Light Mode: Typography ─────────────────────────────────── */
-        h1, h2, h3, h4, h5, h6, label, p, span, div {
-            color: var(--text-primary) !important;
-        }
-        h1 {
-            background: var(--gradient-hero) !important;
-            -webkit-background-clip: text !important;
-            -webkit-text-fill-color: transparent !important;
-            background-clip: text !important;
-        }
+        /* ── Typography ────────────────────────────────────────────────── */
+        h1, h2, h3, h4, h5, h6 { color: var(--text-bright) !important;
+                                  font-family: 'Space Grotesk', sans-serif !important; }
+        h1 { background: var(--gradient-hero) !important;
+             -webkit-background-clip: text !important;
+             -webkit-text-fill-color: transparent !important; background-clip: text !important; }
+        p, span, div, label, li { color: var(--text-primary) !important; }
+        a { color: var(--accent-purple) !important; } a:hover { color: var(--accent-indigo) !important; }
 
-        /* ── Light Mode: Cards ──────────────────────────────────────── */
+        /* ── Metric Cards ─────────────────────────────────────────────── */
         [data-testid="stMetric"] {
             background: var(--bg-card) !important;
             border: 1px solid var(--border) !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+            border-radius: var(--radius-lg) !important;
+            padding: 1rem 1.1rem !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.9) !important;
+            transition: all 0.3s ease !important;
         }
-        [data-testid="stMetric"] [data-testid="stMetricValue"] {
-            color: var(--text-bright) !important;
-        }
-        .vibe-card {
-            background: linear-gradient(135deg, rgba(124,58,237,0.03) 0%, rgba(6,182,212,0.01) 100%), #ffffff !important;
-            border: 1px solid #cbd5e1 !important;
-            box-shadow: 0 1px 6px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8) !important;
-        }
-        .vibe-card:hover {
+        [data-testid="stMetric"]:hover {
             border-color: rgba(124,58,237,0.25) !important;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 0 20px rgba(124,58,237,0.04), inset 0 1px 0 rgba(255,255,255,0.8) !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 0 12px rgba(124,58,237,0.06) !important;
+            transform: translateY(-2px) !important;
+        }
+        [data-testid="stMetric"] [data-testid="stMetricLabel"] {
+            color: var(--text-muted) !important; font-weight: 600 !important;
+            font-size: 0.7rem !important; text-transform: uppercase !important;
+            letter-spacing: 0.12em !important; font-family: 'Space Grotesk', sans-serif !important;
+        }
+        [data-testid="stMetric"] [data-testid="stMetricValue"],
+        [data-testid="stMetric"] [data-testid="stMetricValue"] div {
+            color: var(--text-bright) !important; font-weight: 700 !important;
+            font-size: 1.6rem !important; line-height: 1.2 !important;
+            font-family: 'JetBrains Mono', monospace !important;
+        }
+        [data-testid="stMetric"] [data-testid="stMetricDelta"] {
+            font-family: 'JetBrains Mono', monospace !important;
+            font-weight: 600 !important; font-size: 0.85rem !important;
         }
 
-        /* ── Light Mode: Dividers ───────────────────────────────────── */
-        hr {
-            background: linear-gradient(90deg, transparent 0%, #cbd5e1 20%, #cbd5e1 80%, transparent 100%) !important;
+        /* ── Tab Bar ────────────────────────────────────────────────────── */
+        [data-testid="stTabs"] {
+            background: var(--bg-surface) !important; border-radius: var(--radius-lg) !important;
+            padding: 5px !important; border: 1px solid var(--border) !important; gap: 2px !important;
         }
+        [data-testid="stTabs"] button { color: var(--text-muted) !important;
+                                         border-radius: 10px !important; transition: all 0.25s ease !important; }
+        [data-testid="stTabs"] button[aria-selected="true"] {
+            background: linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(6,182,212,0.04) 100%) !important;
+            color: var(--accent-violet) !important;
+            border-bottom: 2px solid var(--accent-violet) !important; }
+        [data-testid="stTabs"] button[aria-selected="true"] p { color: var(--accent-violet) !important; }
+        [data-testid="stTabs"] button:hover:not([aria-selected="true"]) {
+            background: rgba(0,0,0,0.02) !important; color: var(--text-secondary) !important; }
+
+        /* ── Selectbox / Dropdown ────────────────────────────────────────── */
+        [data-testid="stSelectbox"] > div > div,
+        [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+            background: var(--bg-card) !important; color: var(--text-primary) !important;
+            border: 1px solid var(--border) !important; border-radius: 8px !important; }
+        [data-testid="stSelectbox"] svg { fill: var(--text-muted) !important; }
+        [data-testid="stSelectbox"] div[data-baseweb="select"] input {
+            color: var(--text-primary) !important; }
+        /* Dropdown popover (the menu that opens) */
+        div[data-baseweb="popover"] div[data-baseweb="menu"] {
+            background-color: #ffffff !important; border: 1px solid #cbd5e1 !important;
+            border-radius: 10px !important; box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important; }
+        div[data-baseweb="popover"] div[data-baseweb="menu"] li,
+        div[data-baseweb="popover"] div[data-baseweb="menu"] div[role="option"],
+        div[data-baseweb="popover"] div[data-baseweb="menu"] li > div {
+            background-color: #ffffff !important; color: #334155 !important; }
+        div[data-baseweb="popover"] div[data-baseweb="menu"] li:hover,
+        div[data-baseweb="popover"] div[data-baseweb="menu"] li:hover > div,
+        div[data-baseweb="popover"] div[data-baseweb="menu"] div[role="option"]:hover {
+            background-color: #f1f5f9 !important; color: #7c3aed !important; }
+        div[data-baseweb="popover"] div[data-baseweb="menu"] li[aria-selected="true"],
+        div[data-baseweb="popover"] div[data-baseweb="menu"] li[aria-selected="true"] > div {
+            background-color: rgba(124,58,237,0.08) !important; color: #7c3aed !important; }
+
+        /* ── Multi-select dropdown ──────────────────────────────────────── */
+        [data-testid="stMultiSelect"] > div > div {
+            background: var(--bg-card) !important; color: var(--text-primary) !important;
+            border: 1px solid var(--border) !important; border-radius: 8px !important; }
+        [data-testid="stMultiSelect"] div[data-baseweb="tag"] {
+            background: rgba(124,58,237,0.08) !important; border: 1px solid rgba(124,58,237,0.2) !important;
+            border-radius: 6px !important; }
+        [data-testid="stMultiSelect"] div[data-baseweb="tag"] span { color: #7c3aed !important; }
+
+        /* ── Inputs / Number / Text ─────────────────────────────────────── */
+        .stNumberInput > div > div > input,
+        .stTextInput > div > div > input {
+            background: var(--bg-card) !important; color: var(--text-primary) !important;
+            border: 1px solid var(--border) !important; border-radius: 8px !important; }
+        .stNumberInput > div > div > input:focus,
+        .stTextInput > div > div > input:focus {
+            border-color: var(--accent-purple) !important;
+            box-shadow: 0 0 0 3px rgba(124,58,237,0.08) !important; }
+
+        /* ── Slider ──────────────────────────────────────────────────────── */
+        [data-testid="stSlider"] > div > div > div > div { background: var(--border) !important; }
+        [data-testid="stSlider"] > div > div > div > div > div { background: var(--accent-purple) !important; }
+
+        /* ── DataFrames / Tables ──────────────────────────────────────────── */
+        [data-testid="stDataFrame"], .stDataFrame {
+            border-radius: var(--radius-md) !important; overflow: hidden !important;
+            border: 1px solid var(--border) !important; }
+        [data-testid="stDataFrame"] td { color: var(--text-primary) !important;
+                                          background: #ffffff !important;
+                                          border-color: var(--border) !important;
+                                          font-family: 'JetBrains Mono', monospace !important;
+                                          font-size: 0.82rem !important; }
+        [data-testid="stDataFrame"] th { color: var(--accent-violet) !important;
+                                          background: var(--bg-elevated) !important;
+                                          border-color: var(--border) !important;
+                                          font-weight: 600 !important; text-transform: uppercase !important;
+                                          font-size: 0.72rem !important; letter-spacing: 0.08em !important;
+                                          font-family: 'Space Grotesk', sans-serif !important; }
+        [data-testid="stDataFrame"] tr:nth-child(even) td { background: #f8fafc !important; }
+        [data-testid="stDataFrame"] tr:hover td { background: var(--bg-hover) !important; }
+
+        /* ── Glow Data Grid (custom tables) ──────────────────────────────── */
+        .gdfg-virtualized-scroll { background: #ffffff !important; }
+        .gdfg-cell { color: #334155 !important; background: #ffffff !important;
+                     border-color: #e2e8f0 !important; }
+        .gdfg-header-cell { color: #7c3aed !important; background: #f1f5f9 !important;
+                             border-color: #cbd5e1 !important; }
+
+        /* ── Expander ────────────────────────────────────────────────────── */
+        [data-testid="stExpander"] { background: var(--bg-card) !important;
+                                      border: 1px solid var(--border) !important;
+                                      border-radius: var(--radius-md) !important; }
+        [data-testid="stExpander"] summary span { color: var(--accent-violet) !important;
+                                                    font-weight: 600 !important; }
+
+        /* ── Alert Boxes ────────────────────────────────────────────────── */
+        [data-testid="stAlert"] { background: var(--bg-card) !important;
+                                   border-radius: var(--radius-md) !important;
+                                   border: 1px solid var(--border) !important; }
+
+        /* ── Buttons ────────────────────────────────────────────────────── */
+        .stButton > button {
+            background: var(--gradient-hero) !important; color: #fff !important;
+            font-weight: 600 !important; border: none !important;
+            border-radius: 8px !important; padding: 0.5rem 1.4rem !important;
+            font-family: 'Space Grotesk', sans-serif !important;
+            text-transform: uppercase !important; letter-spacing: 0.05em !important; }
+        .stButton > button:hover {
+            box-shadow: 0 4px 20px rgba(124,58,237,0.25) !important;
+            transform: translateY(-1px) !important; }
+        .stButton > button p { color: #fff !important; }
+
+        /* ── Checkbox / Toggle ──────────────────────────────────────────── */
+        [data-testid="stCheckbox"] label span { color: var(--text-primary) !important; }
+        [data-testid="stToggle"] label span { color: var(--text-primary) !important; }
+
+        /* ── Dividers ──────────────────────────────────────────────────── */
+        hr { background: linear-gradient(90deg, transparent, var(--border), transparent) !important;
+             border: none !important; height: 1px !important; }
         .section-line {
-            background: linear-gradient(90deg, #7c3aed, #06b6d4, transparent) !important;
-        }
+            height: 2px; border: none; margin: 0.5rem 0 1.25rem; border-radius: 1px;
+            background: linear-gradient(90deg, #7c3aed, #06b6d4, transparent) !important; }
 
-        /* ── Light Mode: Scrollbar ──────────────────────────────────── */
-        ::-webkit-scrollbar-track { background: #f8fafc !important; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1 !important; }
-        ::-webkit-scrollbar-thumb:hover { background: #7c3aed !important; }
-
-        /* ── Light Mode: Noise Overlay Off ──────────────────────────── */
-        .stApp::before {
-            opacity: 0 !important;
-        }
-
-        /* ── Light Mode: Header Badge ───────────────────────────────── */
-        .header-badge {
-            background: rgba(124,58,237,0.06) !important;
-            border: 1px solid rgba(124,58,237,0.15) !important;
-            color: #7c3aed !important;
-        }
-
-        /* ── Light Mode: Status Badges ──────────────────────────────── */
+        /* ── Status Dots ────────────────────────────────────────────────── */
+        .status-dot { display: inline-block; width: 6px; height: 6px;
+                      border-radius: 50%; margin-right: 6px;
+                      animation: pulse-dot 1.8s infinite ease-in-out; }
         .status-dot.live { background: #10b981 !important; box-shadow: 0 0 8px rgba(16,185,129,0.3) !important; }
-        .status-dot.warn { background: #d97706 !important; box-shadow: 0 0 8px rgba(217,119,6,0.3) !important; }
+        .status-dot.off  { background: #94a3b8 !important; animation: none !important; }
         .status-dot.err  { background: #e11d48 !important; box-shadow: 0 0 8px rgba(225,29,72,0.3) !important; }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); }
+                                50% { opacity: 0.6; transform: scale(1.3); } }
 
-        /* ── Light Mode: Footer ─────────────────────────────────────── */
-        .dashboard-footer {
-            color: #94a3b8 !important;
-            border-top: 1px solid #cbd5e1 !important;
+        /* ── Vibe Card ──────────────────────────────────────────────────── */
+        .vibe-card { background: #ffffff !important; border: 1px solid #cbd5e1 !important;
+                     border-radius: var(--radius-lg) !important;
+                     box-shadow: 0 1px 6px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8) !important;
+                     transition: all 0.3s ease !important; }
+        .vibe-card:hover { border-color: rgba(124,58,237,0.25) !important;
+                            box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 0 12px rgba(124,58,237,0.04) !important;
+                            transform: translateY(-2px) !important; }
+
+        /* ── Live Indicator ──────────────────────────────────────────────── */
+        .live-indicator { background: rgba(225,29,72,0.06) !important;
+                          border: 1px solid rgba(225,29,72,0.2) !important;
+                          color: #e11d48 !important; border-radius: 8px; padding: 6px 12px;
+                          font-size: 0.78rem; font-weight: 700; font-family: 'Space Grotesk', sans-serif; }
+
+        /* ── Gradient Text / Badge / Footer ────────────────────────────── */
+        .gradient-text { background: var(--gradient-hero) !important;
+                         -webkit-background-clip: text !important;
+                         -webkit-text-fill-color: transparent !important; background-clip: text !important; }
+        .header-badge { background: rgba(124,58,237,0.06) !important;
+                         border: 1px solid rgba(124,58,237,0.15) !important;
+                         border-radius: 20px; padding: 4px 12px; font-size: 0.75rem;
+                         color: #7c3aed !important; font-family: 'Space Grotesk', sans-serif; }
+        .dashboard-footer { text-align: center; padding: 2rem 0 1rem;
+                            color: var(--text-muted) !important; font-size: 0.8rem;
+                            font-family: 'Space Grotesk', sans-serif;
+                            border-top: 1px solid var(--border) !important; margin-top: 3rem; }
+        .dashboard-footer a { color: var(--accent-purple) !important; }
+
+        /* ── Scrollbar ─────────────────────────────────────────────────── */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #f8fafc !important; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1 !important; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-violet) !important; }
+
+        /* ── Noise overlay OFF in light mode ────────────────────────────── */
+        .stApp::before { display: none !important; }
+
+        /* ── Negative edge highlighting ──────────────────────────────────── */
+        .negative-edge { background-color: rgba(225,29,72,0.06) !important; color: #e11d48 !important; }
+        .funds-amount { color: #00e676 !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+else:
+    st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+        :root {
+            --bg-void:       #08090d;
+            --bg-base:       #0c0d14;
+            --bg-surface:    #12131c;
+            --bg-elevated:   #191b27;
+            --bg-card:       #1e2030;
+            --bg-hover:      #252840;
+            --border:        #2a2d42;
+            --border-light:  #363a54;
+            --border-glow:   rgba(139, 92, 246, 0.15);
+            --text-bright:   #f0f1f5;
+            --text-primary:  #d4d6e0;
+            --text-secondary:#8b8fa8;
+            --text-muted:    #5c6080;
+            --accent-purple: #a78bfa;
+            --accent-violet: #8b5cf6;
+            --accent-indigo: #6366f1;
+            --accent-cyan:   #22d3ee;
+            --accent-teal:   #2dd4bf;
+            --accent-green:  #34d399;
+            --accent-emerald:#10b981;
+            --accent-amber:  #fbbf24;
+            --accent-orange: #f97316;
+            --accent-rose:   #fb7185;
+            --accent-red:    #ef4444;
+            --accent-pink:   #ec4899;
+            --gradient-hero:  linear-gradient(135deg, #8b5cf6 0%, #6366f1 40%, #22d3ee 100%);
+            --gradient-card:  linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(34,211,238,0.04) 100%);
+            --glow-purple:   0 0 20px rgba(139,92,246,0.15), 0 0 60px rgba(139,92,246,0.05);
+            --radius-lg: 16px;
+            --radius-md: 12px;
         }
 
-        /* ── Light Mode: Gradient Text Helper ───────────────────────── */
-        .gradient-text {
-            background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 40%, #06b6d4 100%) !important;
-            -webkit-background-clip: text !important;
-            -webkit-text-fill-color: transparent !important;
-            background-clip: text !important;
+        /* ── Global ────────────────────────────────────────────────────── */
+        .stApp { background: var(--bg-void) !important; color: var(--text-primary) !important;
+                 font-family: 'Inter', sans-serif !important; }
+        [data-testid="stHeader"] { background: transparent !important;
+                                    border-bottom: 1px solid var(--border) !important;
+                                    backdrop-filter: blur(12px) !important; }
+        .positive { color: var(--accent-green) !important; }
+        .negative { color: var(--accent-rose) !important; }
+        .neutral  { color: var(--accent-amber) !important; }
+
+        /* ── Sidebar ────────────────────────────────────────────────────── */
+        section[data-testid="stSidebar"],
+        section[data-testid="stSidebar"] > div { background: var(--bg-base) !important;
+                                                  border-right: 1px solid var(--border) !important; }
+        section[data-testid="stSidebar"] label,
+        section[data-testid="stSidebar"] span,
+        section[data-testid="stSidebar"] p { color: var(--text-primary) !important; }
+
+        /* ── Typography ────────────────────────────────────────────────── */
+        h1, h2, h3, h4, h5, h6 { color: var(--text-bright) !important;
+                                  font-family: 'Space Grotesk', sans-serif !important;
+                                  letter-spacing: -0.02em !important; }
+        h1 { background: var(--gradient-hero) !important;
+             -webkit-background-clip: text !important;
+             -webkit-text-fill-color: transparent !important;
+             background-clip: text !important; font-weight: 800 !important; font-size: 2.2rem !important; }
+        p, span, div, label, li { color: var(--text-primary) !important; }
+        a { color: var(--accent-cyan) !important; } a:hover { color: var(--accent-purple) !important; }
+
+        /* ── Metric Cards — Glassmorphism ─────────────────────────────────── */
+        [data-testid="stMetric"] {
+            background: var(--gradient-card),
+                        linear-gradient(180deg, rgba(30,32,48,0.95) 0%, rgba(18,19,28,0.98) 100%) !important;
+            backdrop-filter: blur(24px) saturate(1.2) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: var(--radius-lg) !important;
+            padding: 1.4rem 1.6rem !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        [data-testid="stMetric"]:hover {
+            border-color: rgba(139,92,246,0.35) !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4), var(--glow-purple) !important;
+            transform: translateY(-3px) !important;
+        }
+        [data-testid="stMetric"] [data-testid="stMetricLabel"] {
+            color: var(--text-muted) !important; font-weight: 600 !important;
+            font-size: 0.7rem !important; text-transform: uppercase !important;
+            letter-spacing: 0.12em !important; font-family: 'Space Grotesk', sans-serif !important;
+        }
+        [data-testid="stMetric"] [data-testid="stMetricValue"],
+        [data-testid="stMetric"] [data-testid="stMetricValue"] div {
+            color: var(--text-bright) !important; font-weight: 700 !important;
+            font-size: 2rem !important; line-height: 1.2 !important;
+            font-family: 'JetBrains Mono', monospace !important;
+        }
+        [data-testid="stMetric"] [data-testid="stMetricDelta"] {
+            font-family: 'JetBrains Mono', monospace !important;
+            font-weight: 600 !important; font-size: 0.85rem !important;
         }
 
-        /* ── Light Mode: Metric Bar ─────────────────────────────────── */
-        .metric-bar {
-            background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 40%, #06b6d4 100%) !important;
+        /* ── Tab Bar ────────────────────────────────────────────────────── */
+        [data-testid="stTabs"] {
+            background: var(--bg-surface) !important; border-radius: var(--radius-lg) !important;
+            padding: 5px !important; border: 1px solid var(--border) !important; gap: 2px !important;
         }
+        [data-testid="stTabs"] button { color: var(--text-muted) !important;
+                                         border-radius: 10px !important;
+                                         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                                         font-family: 'Space Grotesk', sans-serif !important; }
+        [data-testid="stTabs"] button p { color: inherit !important; font-size: 0.85rem !important; }
+        [data-testid="stTabs"] button[aria-selected="true"] {
+            background: linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(34,211,238,0.08) 100%) !important;
+            color: var(--accent-purple) !important;
+            border-bottom: 2px solid var(--accent-purple) !important;
+            box-shadow: 0 0 20px rgba(139,92,246,0.08) !important; }
+        [data-testid="stTabs"] button[aria-selected="true"] p { color: var(--accent-purple) !important; }
+        [data-testid="stTabs"] button:hover:not([aria-selected="true"]) {
+            background: rgba(255,255,255,0.03) !important; color: var(--text-secondary) !important; }
+
+        /* ── Selectbox / Dropdown ────────────────────────────────────────── */
+        [data-testid="stSelectbox"] > div > div,
+        [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+            background: var(--bg-card) !important; color: var(--text-primary) !important;
+            border: 1px solid var(--border) !important; border-radius: 8px !important; }
+        [data-testid="stSelectbox"] svg { fill: var(--text-muted) !important; }
+        [data-testid="stSelectbox"] div[data-baseweb="select"] input {
+            color: var(--text-primary) !important; }
+        /* Dropdown popover */
+        div[data-baseweb="popover"] div[data-baseweb="menu"] {
+            background-color: #1e2030 !important; border: 1px solid #2a2d42 !important;
+            border-radius: 10px !important; box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important; }
+        div[data-baseweb="popover"] div[data-baseweb="menu"] li,
+        div[data-baseweb="popover"] div[data-baseweb="menu"] div[role="option"],
+        div[data-baseweb="popover"] div[data-baseweb="menu"] li > div {
+            background-color: #1e2030 !important; color: #d4d6e0 !important; }
+        div[data-baseweb="popover"] div[data-baseweb="menu"] li:hover,
+        div[data-baseweb="popover"] div[data-baseweb="menu"] li:hover > div,
+        div[data-baseweb="popover"] div[data-baseweb="menu"] div[role="option"]:hover {
+            background-color: #252840 !important; color: #a78bfa !important; }
+        div[data-baseweb="popover"] div[data-baseweb="menu"] li[aria-selected="true"],
+        div[data-baseweb="popover"] div[data-baseweb="menu"] li[aria-selected="true"] > div {
+            background-color: rgba(139,92,246,0.12) !important; color: #a78bfa !important; }
+
+        /* ── Multi-select dropdown ──────────────────────────────────────── */
+        [data-testid="stMultiSelect"] > div > div {
+            background: var(--bg-card) !important; color: var(--text-primary) !important;
+            border: 1px solid var(--border) !important; border-radius: 8px !important; }
+        [data-testid="stMultiSelect"] div[data-baseweb="tag"] {
+            background: rgba(139,92,246,0.1) !important; border: 1px solid rgba(139,92,246,0.2) !important;
+            border-radius: 6px !important; }
+        [data-testid="stMultiSelect"] div[data-baseweb="tag"] span { color: #a78bfa !important; }
+
+        /* ── Inputs / Number / Text ─────────────────────────────────────── */
+        .stNumberInput > div > div > input,
+        .stTextInput > div > div > input {
+            background: var(--bg-card) !important; color: var(--text-primary) !important;
+            border: 1px solid var(--border) !important; border-radius: 8px !important; }
+        .stNumberInput > div > div > input:focus,
+        .stTextInput > div > div > input:focus {
+            border-color: var(--accent-purple) !important;
+            box-shadow: 0 0 0 3px rgba(139,92,246,0.1) !important; }
+
+        /* ── Slider ──────────────────────────────────────────────────────── */
+        [data-testid="stSlider"] > div > div > div > div { background: var(--border) !important; }
+        [data-testid="stSlider"] > div > div > div > div > div { background: var(--accent-purple) !important; }
+
+        /* ── DataFrames / Tables ──────────────────────────────────────────── */
+        [data-testid="stDataFrame"], .stDataFrame {
+            border-radius: var(--radius-md) !important; overflow: hidden !important;
+            border: 1px solid var(--border) !important; }
+        [data-testid="stDataFrame"] td { color: var(--text-primary) !important;
+                                          background: var(--bg-surface) !important;
+                                          border-color: var(--border) !important;
+                                          font-family: 'JetBrains Mono', monospace !important;
+                                          font-size: 0.82rem !important; }
+        [data-testid="stDataFrame"] th { color: var(--accent-purple) !important;
+                                          background: var(--bg-elevated) !important;
+                                          border-color: var(--border) !important;
+                                          font-weight: 600 !important; text-transform: uppercase !important;
+                                          font-size: 0.72rem !important; letter-spacing: 0.08em !important;
+                                          font-family: 'Space Grotesk', sans-serif !important; }
+        [data-testid="stDataFrame"] tr:nth-child(even) td { background: rgba(25,27,39,0.6) !important; }
+        [data-testid="stDataFrame"] tr:hover td { background: var(--bg-hover) !important; }
+
+        /* ── Glow Data Grid ──────────────────────────────────────────────── */
+        .gdfg-virtualized-scroll { background: #12131c !important; }
+        .gdfg-cell { color: #d4d6e0 !important; background: #1e2030 !important;
+                     border-color: #2a2d42 !important; }
+        .gdfg-header-cell { color: #a78bfa !important; background: #191b27 !important;
+                             border-color: #2a2d42 !important; }
+
+        /* ── Expander ────────────────────────────────────────────────────── */
+        [data-testid="stExpander"] { background: var(--bg-card) !important;
+                                      border: 1px solid var(--border) !important;
+                                      border-radius: var(--radius-md) !important;
+                                      transition: all 0.3s ease !important; }
+        [data-testid="stExpander"]:hover { border-color: var(--border-light) !important; }
+        [data-testid="stExpander"] summary span { color: var(--accent-cyan) !important;
+                                                    font-weight: 600 !important; }
+
+        /* ── Alert Boxes ────────────────────────────────────────────────── */
+        [data-testid="stAlert"] { background: var(--bg-card) !important;
+                                   border-radius: var(--radius-md) !important;
+                                   border: 1px solid var(--border) !important; }
+
+        /* ── Buttons ────────────────────────────────────────────────────── */
+        .stButton > button {
+            background: var(--gradient-hero) !important; color: #fff !important;
+            font-weight: 600 !important; border: none !important;
+            border-radius: var(--radius-md) !important; padding: 0.6rem 1.6rem !important;
+            font-family: 'Space Grotesk', sans-serif !important;
+            text-transform: uppercase !important; letter-spacing: 0.06em !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; }
+        .stButton > button:hover {
+            box-shadow: 0 0 30px rgba(139,92,246,0.35), 0 0 60px rgba(99,102,241,0.15) !important;
+            transform: translateY(-2px) !important; }
+        .stButton > button p { color: #fff !important; }
+
+        /* ── Checkbox / Toggle ──────────────────────────────────────────── */
+        [data-testid="stCheckbox"] label span { color: var(--text-primary) !important; }
+        [data-testid="stToggle"] label span { color: var(--text-primary) !important; }
+
+        /* ── Dividers ──────────────────────────────────────────────────── */
+        hr { background: linear-gradient(90deg, transparent, var(--border), transparent) !important;
+             border: none !important; height: 1px !important; }
+        .section-line {
+            height: 2px; border: none; margin: 0.5rem 0 1.25rem; border-radius: 1px;
+            background: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan), transparent) !important; }
+
+        /* ── Status Dots ────────────────────────────────────────────────── */
+        .status-dot { display: inline-block; width: 6px; height: 6px;
+                      border-radius: 50%; margin-right: 6px;
+                      animation: pulse-dot 1.8s infinite ease-in-out; }
+        .status-dot.live { background: var(--accent-green) !important;
+                           box-shadow: 0 0 8px rgba(16,185,129,0.5) !important; }
+        .status-dot.off  { background: var(--text-muted) !important; animation: none !important; }
+        .status-dot.err  { background: var(--accent-rose) !important;
+                           box-shadow: 0 0 8px rgba(251,113,133,0.4) !important; }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); }
+                                50% { opacity: 0.6; transform: scale(1.3); } }
+
+        /* ── Vibe Card ──────────────────────────────────────────────────── */
+        .vibe-card { background: linear-gradient(135deg, rgba(30,32,48,0.9) 0%, rgba(18,19,28,0.95) 100%) !important;
+                     border: 1px solid var(--border) !important; border-radius: var(--radius-lg) !important;
+                     backdrop-filter: blur(24px) saturate(1.2) !important;
+                     box-shadow: 0 2px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+                     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important; }
+        .vibe-card:hover { border-color: rgba(139,92,246,0.3) !important;
+                            box-shadow: 0 8px 32px rgba(0,0,0,0.35), var(--glow-purple) !important;
+                            transform: translateY(-2px) !important; }
+
+        /* ── Live Indicator ──────────────────────────────────────────────── */
+        .live-indicator { background: rgba(251,113,133,0.08) !important;
+                          border: 1px solid rgba(251,113,133,0.3) !important;
+                          color: var(--accent-rose) !important; border-radius: 8px; padding: 6px 12px;
+                          font-size: 0.78rem; font-weight: 700; font-family: 'Space Grotesk', sans-serif; }
+
+        /* ── Gradient Text / Badge / Footer ────────────────────────────── */
+        .gradient-text { background: var(--gradient-hero) !important;
+                         -webkit-background-clip: text !important;
+                         -webkit-text-fill-color: transparent !important; background-clip: text !important; }
+        .header-badge { background: rgba(139,92,246,0.1) !important;
+                         border: 1px solid rgba(139,92,246,0.2) !important;
+                         border-radius: 20px; padding: 4px 12px; font-size: 0.75rem;
+                         color: var(--accent-purple) !important; font-family: 'Space Grotesk', sans-serif; }
+        .dashboard-footer { text-align: center; padding: 2rem 0 1rem;
+                            color: var(--text-muted) !important; font-size: 0.8rem;
+                            font-family: 'Space Grotesk', sans-serif;
+                            border-top: 1px solid var(--border) !important; margin-top: 3rem; }
+        .dashboard-footer a { color: var(--accent-purple) !important; }
+
+        /* ── Scrollbar ─────────────────────────────────────────────────── */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg-void) !important; }
+        ::-webkit-scrollbar-thumb { background: var(--border) !important; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-purple) !important; }
+
+        /* ── Noise Overlay ──────────────────────────────────────────────── */
+        .stApp::before {
+            content: ""; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none; z-index: 0; opacity: 0.015;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+            background-size: 128px 128px; }
+
+        /* ── Negative edge highlighting ──────────────────────────────────── */
+        .negative-edge { background-color: rgba(239,68,68,0.08) !important; color: #fb7185 !important; }
+
+        /* ── Funds amount — always green ──────────────────────────────────── */
+        .funds-amount, .funds-amount * { color: #00e676 !important; }
+
+        /* ── Plotly chart backgrounds ───────────────────────────────────── */
+        .js-plotly-plot .plotly .main-svg { background: transparent !important; }
+
+        /* ── Spinner ────────────────────────────────────────────────────── */
+        [data-testid="stSpinner"] { color: var(--accent-purple) !important; }
+
+        /* ── Pre / JSON ─────────────────────────────────────────────────── */
+        pre { background: var(--bg-card) !important; color: var(--accent-teal) !important;
+              border: 1px solid var(--border) !important; border-radius: 8px !important;
+              font-family: 'JetBrains Mono', monospace !important; font-size: 0.8rem !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -659,7 +923,7 @@ def create_risk_gauge(risk_metrics, layout=DARK_LAYOUT, theme_mode="Dark Mode"):
     return fig
 
 def highlight_edge(val):
-    """Highlight edge column: green for positive edge, light red for negative edge."""
+    """Highlight edge column: green for positive edge."""
     try:
         if isinstance(val, str):
             if '%' in val:
@@ -671,8 +935,6 @@ def highlight_edge(val):
         
         if numeric_val > 0.001:
             return 'background-color: #d4edda; color: #155724;'
-        elif numeric_val < -0.001:
-            return 'background-color: #f8d7da; color: #721c24;'
     except:
         pass
     return ''
@@ -690,7 +952,7 @@ def display_market_table(markets_df):
     styled_df = display_df.style.map(highlight_edge, subset=['Edge'])
     st.dataframe(
         styled_df,
-        use_container_width=True,
+        width="stretch",
         height=400
     )
 
@@ -740,7 +1002,7 @@ def display_allocations_table(allocations_df):
 
     st.dataframe(
         styled_df,
-        use_container_width=True
+        width="stretch"
     )
 
 def fetch_5min_crypto_events():
@@ -886,7 +1148,7 @@ def render_crypto_markets_tab(bot):
         with cols[idx]:
             st.markdown(html_card, unsafe_allow_html=True)
             st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
-            if st.button(f"🔍 Select {coin_name}", key=f"focus_{coin_name}", use_container_width=True):
+            if st.button(f"🔍 Select {coin_name}", key=f"focus_{coin_name}", width="stretch"):
                 st.session_state["focused_coin"] = coin_name
                 st.rerun()
 
@@ -971,7 +1233,7 @@ def render_crypto_markets_tab(bot):
             showlegend=False
         )
         fig.update_layout(chart_layout)
-        st.plotly_chart(fig, use_container_width=True, theme=None)
+        st.plotly_chart(fig, width="stretch", theme=None)
         
     with c_details:
         section_header("Contract Details", "")
@@ -1042,7 +1304,7 @@ def main():
                 <span style="font-family:monospace; font-size:0.72rem; color:#888;">
                     Proxy: {proxy_short}
                 </span>
-                <span style="font-family:monospace; font-size:0.82rem; color:#00e676 !important; font-weight:700; margin-top:2px; display:inline-flex; align-items:center; gap:4px;">
+                <span class="funds-amount" style="font-family:monospace; font-size:1.15rem; color:#00e676; font-weight:800; margin-top:4px; display:inline-flex; align-items:center; gap:5px;">
                     💰 {conn.get('proxy_balance', 0.0):,.2f} USDC
                 </span>
             </div>
@@ -1058,7 +1320,7 @@ def main():
                 <span style="font-family:sans-serif; font-size:0.72rem; color:#ff4444;">
                     API Offline
                 </span>
-                <span style="font-family:monospace; font-size:0.82rem; color:#00e676 !important; font-weight:700; margin-top:2px; display:inline-flex; align-items:center; gap:4px;">
+                <span class="funds-amount" style="font-family:monospace; font-size:1.15rem; color:#00e676; font-weight:800; margin-top:4px; display:inline-flex; align-items:center; gap:5px;">
                     💰 {conn.get('proxy_balance', 0.0):,.2f} USDC
                 </span>
             </div>
@@ -1072,14 +1334,16 @@ def main():
 
     # Wallet Details Expander
     with st.sidebar.expander("💼 Wallet Details", expanded=False):
-        eoa = conn.get("eoa_address") or "Not Available"
-        proxy = conn.get("proxy_address") or "Not Available"
-        
+        eoa = conn.get("eoa_address") or "N/A"
+        proxy = conn.get("proxy_address") or "N/A"
+        eoa_short = f"{eoa[:6]}...{eoa[-4:]}" if len(eoa) > 10 else eoa
+        proxy_short_full = f"{proxy[:6]}...{proxy[-4:]}" if len(proxy) > 10 else proxy
+
         st.markdown("<span style='font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;'>EOA Wallet</span>", unsafe_allow_html=True)
-        st.code(eoa, language=None)
-        
+        st.code(eoa_short, language=None)
+
         st.markdown("<span style='font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;'>Proxy Wallet</span>", unsafe_allow_html=True)
-        st.code(proxy, language=None)
+        st.code(proxy_short_full, language=None)
         
         if conn.get("error"):
             st.warning(f"**Notice:** {conn['error']}")
@@ -1228,7 +1492,7 @@ def main():
                     )
                     fig_edge.add_vline(x=0, line_dash="dash", line_color="red")
                     fig_edge.update_layout(**plotly_layout)
-                    st.plotly_chart(fig_edge, use_container_width=True)
+                    st.plotly_chart(fig_edge, width="stretch")
 
                 with col2:
                     # Price vs Probability scatter
@@ -1262,7 +1526,7 @@ def main():
                         x0=0, y0=0, x1=1, y1=1
                     )
                     fig_scatter.update_layout(**plotly_layout)
-                    st.plotly_chart(fig_scatter, use_container_width=True)
+                    st.plotly_chart(fig_scatter, width="stretch")
 
     # Tab 2: Crypto markets
     with tab2:
@@ -1330,7 +1594,7 @@ def main():
                     with col1:
                         allocations_fig = create_allocations_chart(allocations_df, layout=plotly_layout, theme_mode=theme_mode)
                         if allocations_fig:
-                            st.plotly_chart(allocations_fig, use_container_width=True)
+                            st.plotly_chart(allocations_fig, width="stretch")
                         else:
                             st.info("No significant allocations to display")
 
@@ -1400,7 +1664,7 @@ def main():
                     with col1:
                         allocations_fig = create_allocations_chart(allocations_df, layout=plotly_layout, theme_mode=theme_mode)
                         if allocations_fig:
-                            st.plotly_chart(allocations_fig, use_container_width=True)
+                            st.plotly_chart(allocations_fig, width="stretch")
                         else:
                             st.info("No significant allocations to display")
 
@@ -1457,7 +1721,7 @@ def main():
             # Performance history chart
             perf_fig = create_performance_chart(bot.performance_log, layout=plotly_layout, theme_mode=theme_mode)
             if perf_fig:
-                st.plotly_chart(perf_fig, use_container_width=True)
+                st.plotly_chart(perf_fig, width="stretch")
             else:
                 st.info("💡 Performance history chart will appear after multiple trading cycles are recorded")
 
@@ -1471,9 +1735,9 @@ def main():
                     available_cols = [col for col in display_cols if col in trades_df.columns]
                     if available_cols:
                         display_trades = trades_df[available_cols].copy()
-                        st.dataframe(display_trades, use_container_width=True)
+                        st.dataframe(display_trades, width="stretch")
                     else:
-                        st.dataframe(trades_df, use_container_width=True)
+                        st.dataframe(trades_df, width="stretch")
                 else:
                     st.info("No trade history available yet")
             else:
@@ -1524,7 +1788,7 @@ def main():
             # Risk gauges
             if current_prices:  # Only show if we have price data
                 risk_fig = create_risk_gauge(risk_summary, layout=plotly_layout, theme_mode=theme_mode)
-                st.plotly_chart(risk_fig, use_container_width=True)
+                st.plotly_chart(risk_fig, width="stretch")
             else:
                 st.info("Risk gauges will appear when market data is available")
 
@@ -1590,7 +1854,7 @@ def main():
                         'Timestamp': q.get('timestamp', 'N/A'),
                     })
                 quotes_df = pd.DataFrame(quotes_data)
-                st.dataframe(quotes_df, use_container_width=True)
+                st.dataframe(quotes_df, width="stretch")
             else:
                 st.info("No active limit quotes at the moment")
 
@@ -1643,9 +1907,9 @@ def main():
                         if 'edge' in formatted_trades.columns:
                             formatted_trades['edge'] = formatted_trades['edge'].apply(lambda x: f"{float(x):.1f}%" if isinstance(x, (int, float)) else x)
 
-                        st.dataframe(formatted_trades, use_container_width=True)
+                        st.dataframe(formatted_trades, width="stretch")
                     else:
-                        st.dataframe(display_trades, use_container_width=True)
+                        st.dataframe(display_trades, width="stretch")
 
                     # Trade statistics
                     st.subheader("Trade Statistics")
@@ -1917,7 +2181,7 @@ def main():
                     trade_log = results.get('trade_log', [])
                     if trade_log:
                         trade_df = pd.DataFrame(trade_log)
-                        st.dataframe(trade_df, use_container_width=True)
+                        st.dataframe(trade_df, width="stretch")
                     else:
                         st.info("No trades executed during this backtest.")
                 else:
