@@ -17,13 +17,13 @@ class AlertManager:
         self.alert_file = alert_file
         # Ensure alert file exists
         if not os.path.exists(self.alert_file):
-            with open(self.alert_file, 'w') as f:
+            with open(self.alert_file, 'w', encoding='utf-8') as f:
                 json.dump([], f)
 
     def _load_alerts(self) -> List[Dict]:
         """Load existing alerts from file"""
         try:
-            with open(self.alert_file, 'r') as f:
+            with open(self.alert_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             return []
@@ -31,7 +31,7 @@ class AlertManager:
     def _save_alerts(self, alerts: List[Dict]):
         """Save alerts to file"""
         try:
-            with open(self.alert_file, 'w') as f:
+            with open(self.alert_file, 'w', encoding='utf-8') as f:
                 json.dump(alerts, f, indent=2, default=str)
         except Exception as e:
             logger.error(f"Failed to save alerts: {e}")

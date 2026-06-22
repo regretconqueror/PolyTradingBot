@@ -219,7 +219,7 @@ MIN_BET_SIZE=0.02
 # SCIENCE=0.15
 """
 
-        with open(filepath, 'w') as f:
+        with open(filepath, 'w', encoding='utf-8') as f:
             f.write(template)
         print(f"Configuration template saved to {filepath}")
 

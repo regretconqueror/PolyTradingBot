@@ -3,6 +3,7 @@ Streamlit Dashboard for PolyTradingBot
 Provides real-time visualization of trading activities, market data, portfolio performance, and risk metrics.
 """
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -31,6 +32,137 @@ from backtest.historical_data import (
     buy_cheap_strategy,
 )
 import time
+
+import subprocess
+import os
+import signal
+
+def clean_html(html_str: str) -> str:
+    """Minimize and clean HTML string to prevent Markdown code-block rendering."""
+    import textwrap
+    import re
+    if not html_str:
+        return ""
+    dedented = textwrap.dedent(html_str).strip()
+    return re.sub(r'\s+', ' ', dedented)
+
+def get_bot_pids() -> list:
+    """Get the PIDs of running run.py processes."""
+    pids = []
+    try:
+        if sys.platform.startswith("win"):
+            # On Windows, query running processes using WMIC command line check
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            cmd = ['wmic', 'process', 'where', "name='python.exe' or name='pythonw.exe'", 'get', 'commandline,processid']
+            try:
+                output = subprocess.check_output(cmd, startupinfo=startupinfo, text=True, errors='ignore')
+                current_pid = str(os.getpid())
+                for line in output.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if 'run.py' in line and current_pid not in line:
+                        # Extract the PID, which is usually the last word in the wmic output
+                        parts = line.split()
+                        if parts:
+                            try:
+                                pid = int(parts[-1])
+                                pids.append(pid)
+                            except ValueError:
+                                pass
+            except Exception:
+                # Fallback to powershell if wmic fails
+                cmd = ['powershell', '-NoProfile', '-Command', 
+                       'Get-CimInstance Win32_Process -Filter "name like \'python%\'" | Select-Object CommandLine, ProcessId | ConvertTo-Json']
+                output = subprocess.check_output(cmd, startupinfo=startupinfo, text=True, errors='ignore')
+                if 'run.py' in output:
+                    try:
+                        import json
+                        data = json.loads(output)
+                        if isinstance(data, dict):
+                            data = [data]
+                        for proc in data:
+                            cmd_line = proc.get('CommandLine', '') or ''
+                            pid = proc.get('ProcessId')
+                            if 'run.py' in cmd_line and str(pid) != current_pid:
+                                pids.append(int(pid))
+                    except Exception:
+                        import re
+                        for match in re.finditer(r'"ProcessId":\s*(\d+)', output):
+                            pids.append(int(match.group(1)))
+        else:
+            # On Unix systems (Linux / macOS), use ps aux
+            output = subprocess.check_output(['ps', 'aux'], text=True, errors='ignore')
+            current_pid = str(os.getpid())
+            for line in output.splitlines():
+                if 'run.py' in line and 'python' in line and current_pid not in line:
+                    parts = line.split()
+                    if len(parts) > 1:
+                        try:
+                            pids.append(int(parts[1]))
+                        except ValueError:
+                            pass
+    except Exception as e:
+        logger.error(f"Error checking bot PIDs: {e}")
+    
+    return list(set(pids))
+
+def check_bot_process_running() -> bool:
+    """Check if the run.py process is running as a background task."""
+    return len(get_bot_pids()) > 0
+
+def start_bot_process(mode: str, interval: int) -> bool:
+    """Start the run.py process as a detached background task."""
+    from pathlib import Path
+    project_root = Path(__file__).parent.parent
+    run_py_path = project_root / 'run.py'
+    
+    # Find Python executable
+    venv_python = project_root / '.venv' / 'Scripts' / 'python.exe' if sys.platform.startswith('win') else project_root / '.venv' / 'bin' / 'python'
+    python_exe = str(venv_python) if venv_python.exists() else sys.executable
+
+    cmd = [python_exe, str(run_py_path), '--mode', mode.lower(), '--interval', str(interval)]
+    if mode.lower() == 'live':
+        cmd.append('--confirm-live')
+        
+    try:
+        creationflags = 0
+        if sys.platform.startswith('win'):
+            # DETACHED_PROCESS = 0x00000008
+            creationflags = 0x00000008
+        
+        subprocess.Popen(
+            cmd,
+            cwd=str(project_root),
+            creationflags=creationflags,
+            close_fds=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Failed to start bot process: {e}")
+        return False
+
+def stop_bot_process() -> bool:
+    """Stop all running run.py processes."""
+    pids = get_bot_pids()
+    if not pids:
+        return True
+        
+    success = True
+    for pid in pids:
+        try:
+            if sys.platform.startswith('win'):
+                subprocess.run(['taskkill', '/F', '/PID', str(pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            else:
+                os.kill(pid, signal.SIGTERM)
+        except Exception as e:
+            logger.error(f"Failed to kill process {pid}: {e}")
+            success = False
+            
+    return success
 
 def update_config_toml(mode: str):
     """Dynamically update config.toml for Glide Data Grid alignment without crashing."""
@@ -379,6 +511,11 @@ if theme_mode == "Light Mode":
         /* ── Negative edge highlighting ──────────────────────────────────── */
         .negative-edge { background-color: rgba(225,29,72,0.06) !important; color: #e11d48 !important; }
         .funds-amount { color: #00e676 !important; }
+
+        /* Hide dynamic scripting helper iframe */
+        iframe[width="0"][height="0"] {
+            display: none !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -681,6 +818,11 @@ else:
         pre { background: var(--bg-card) !important; color: var(--accent-teal) !important;
               border: 1px solid var(--border) !important; border-radius: 8px !important;
               font-family: 'JetBrains Mono', monospace !important; font-size: 0.8rem !important; }
+
+        /* Hide dynamic scripting helper iframe */
+        iframe[width="0"][height="0"] {
+            display: none !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -743,6 +885,7 @@ def initialize_bot():
             paper_mode=settings.paper_mode,
             enable_yes_no_arb=True
         )
+        bot.load_state()
         return bot, settings
     except Exception as e:
         st.error(f"Failed to initialize bot: {str(e)}")
@@ -1278,6 +1421,7 @@ def main():
 
     # Fetch connection status
     conn = bot.get_api_connection_details()
+    bot_running = check_bot_process_running()
 
     # ── HERO HEADER ──────────────────────────────────────────────────────
     col_left, col_right = st.columns([3, 2])
@@ -1293,14 +1437,86 @@ def main():
         render_header_time()
 
     with col_right:
+        interval_mins = getattr(bot, 'interval', 60)
+        if bot_running:
+            bot_badge = clean_html('''
+            <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(16,185,129,0.1); border:1px solid #10b981; color:#10b981; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                <span class="status-dot live"></span>
+                Bot: Active
+            </span>
+            ''')
+        else:
+            bot_badge = clean_html('''
+            <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(148,163,184,0.1); border:1px solid #94a3b8; color:#94a3b8; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                <span class="status-dot off"></span>
+                Bot: Inactive
+            </span>
+            ''')
+
+        next_run_str = getattr(bot, 'next_run_timestamp', None)
+        if bot_running and next_run_str:
+            try:
+                next_run_dt = datetime.fromisoformat(next_run_str)
+                next_run_epoch = int(next_run_dt.timestamp() * 1000)
+                
+                # Calculate initial remaining time in Python to avoid flashing "Calculating..."
+                now_dt = datetime.now()
+                diff_seconds = int((next_run_dt - now_dt).total_seconds())
+                if diff_seconds <= 0:
+                    initial_text = "⏱️ Cycle Timeout: Running..."
+                else:
+                    initial_mins = diff_seconds // 60
+                    initial_secs = diff_seconds % 60
+                    initial_text = f"⏱️ Cycle Timeout in: {initial_mins}m {initial_secs:02d}s"
+
+                cycle_timeout_badge = clean_html(f'''
+                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(6,182,212,0.08); border:1px solid var(--accent-cyan); color:var(--accent-cyan); border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                    <span class="status-dot live" style="background:var(--accent-cyan) !important; box-shadow:0 0 8px var(--accent-cyan) !important; width:5px; height:5px; margin-right:2px; display:inline-block; vertical-align:middle;"></span>
+                    <span class="countdown-text" id="cycle-countdown-badge" data-next-run-ms="{next_run_epoch}">{initial_text}</span>
+                </span>
+                ''')
+            except Exception:
+                cycle_timeout_badge = clean_html('''
+                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(148,163,184,0.1); border:1px solid #94a3b8; color:#94a3b8; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                    <span class="status-dot off" style="width:5px; height:5px; margin-right:2px; display:inline-block; vertical-align:middle;"></span>
+                    ⏱️ Cycle Timeout: --
+                </span>
+                ''')
+            except Exception:
+                cycle_timeout_badge = clean_html('''
+                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(148,163,184,0.1); border:1px solid #94a3b8; color:#94a3b8; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                    <span class="status-dot off" style="width:5px; height:5px; margin-right:2px; display:inline-block; vertical-align:middle;"></span>
+                    ⏱️ Cycle Timeout: --
+                </span>
+                ''')
+        else:
+            if bot_running:
+                cycle_timeout_badge = clean_html(f'''
+                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(6,182,212,0.08); border:1px solid var(--accent-cyan); color:var(--accent-cyan); border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                    <span class="status-dot live" style="background:var(--accent-cyan) !important; box-shadow:0 0 8px var(--accent-cyan) !important; width:5px; height:5px; margin-right:2px; display:inline-block; vertical-align:middle;"></span>
+                    ⏱️ Cycle Timeout: {interval_mins}m
+                </span>
+                ''')
+            else:
+                cycle_timeout_badge = clean_html('''
+                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(148,163,184,0.1); border:1px solid #94a3b8; color:#94a3b8; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                    <span class="status-dot off" style="width:5px; height:5px; margin-right:2px; display:inline-block; vertical-align:middle;"></span>
+                    ⏱️ Cycle Timeout: Offline
+                </span>
+                ''')
+
         if conn.get("connected"):
             proxy_short = f"{conn['proxy_address'][:6]}...{conn['proxy_address'][-4:]}" if conn.get('proxy_address') else "Unknown Proxy"
-            badge_html = f'''
+            badge_html = clean_html(f'''
             <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px; padding-top:4px;">
-                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(16,185,129,0.1); border:1px solid #10b981; color:#10b981; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                    <span class="status-dot live"></span>
-                    {conn.get("status_text", "Connected")}
-                </span>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; margin-bottom:4px;">
+                    <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(16,185,129,0.1); border:1px solid #10b981; color:#10b981; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                        <span class="status-dot live"></span>
+                        API: {conn.get("status_text", "Connected")}
+                    </span>
+                    {bot_badge}
+                    {cycle_timeout_badge}
+                </div>
                 <span style="font-family:monospace; font-size:0.72rem; color:#888;">
                     Proxy: {proxy_short}
                 </span>
@@ -1308,15 +1524,19 @@ def main():
                     💰 {conn.get('proxy_balance', 0.0):,.2f} USDC
                 </span>
             </div>
-            '''
+            ''')
             st.markdown(badge_html, unsafe_allow_html=True)
         else:
-            badge_html = f'''
+            badge_html = clean_html(f'''
             <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px; padding-top:4px;">
-                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(92,96,128,0.1); border:1px solid #ff4444; color:#ff4444; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                    <span class="status-dot off"></span>
-                    {conn.get("status_text", "Disconnected")}
-                </span>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; margin-bottom:4px;">
+                    <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(92,96,128,0.1); border:1px solid #ff4444; color:#ff4444; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                        <span class="status-dot off"></span>
+                        API: {conn.get("status_text", "Disconnected")}
+                    </span>
+                    {bot_badge}
+                    {cycle_timeout_badge}
+                </div>
                 <span style="font-family:sans-serif; font-size:0.72rem; color:#ff4444;">
                     API Offline
                 </span>
@@ -1324,7 +1544,7 @@ def main():
                     💰 {conn.get('proxy_balance', 0.0):,.2f} USDC
                 </span>
             </div>
-            '''
+            ''')
             st.markdown(badge_html, unsafe_allow_html=True)
 
     st.markdown("""<hr class="section-line">""", unsafe_allow_html=True)
@@ -1369,8 +1589,36 @@ def main():
         update_config_toml(selected_theme)
 
     # Trading mode selection
-    st.sidebar.subheader("Trading Mode")
+    st.sidebar.subheader("Trading Process Control")
+    bot_running = check_bot_process_running()
+    
     paper_mode = st.sidebar.checkbox("Paper Trading Mode", value=True, help="Enable for simulated trading")
+    bot_interval = st.sidebar.number_input(
+        "Bot Run Interval (mins)",
+        min_value=1,
+        max_value=1440,
+        value=60,
+        step=5,
+        help="How often the background bot runs a cycle (in minutes)"
+    )
+
+    if bot_running:
+        if st.sidebar.button("🛑 Stop Trading Bot", key="stop_bot_btn", use_container_width=True):
+            if stop_bot_process():
+                st.toast("Bot process stopped successfully!", icon="🛑")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error("Failed to stop the bot process.")
+    else:
+        mode_str = "paper" if paper_mode else "live"
+        if st.sidebar.button(f"🚀 Start Trading Bot ({mode_str.upper()})", key="start_bot_btn", use_container_width=True):
+            if start_bot_process("paper" if paper_mode else "live", bot_interval):
+                st.toast(f"Bot process started in {mode_str.upper()} mode!", icon="🚀")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error("Failed to start the bot process.")
 
     # Capital adjustment
     capital = st.sidebar.number_input(
@@ -1984,7 +2232,7 @@ def main():
                     with filter_col2:
                         if st.button("Clear Alerts"):
                             # Clear alerts file
-                            with open(bot.alert_manager.alert_file, 'w') as f:
+                            with open(bot.alert_manager.alert_file, 'w', encoding='utf-8') as f:
                                 json.dump([], f)
                             st.rerun()
 
@@ -2203,6 +2451,48 @@ def main():
         </p>
     </div>
     """, unsafe_allow_html=True)
+
+    # Client-side dynamic ticking script using Same-Origin iframe
+    next_run_str = getattr(bot, 'next_run_timestamp', None)
+    if bot_running and next_run_str:
+        try:
+            next_run_dt = datetime.fromisoformat(next_run_str)
+            next_run_epoch = int(next_run_dt.timestamp() * 1000)
+            components.html(f"""
+            <script>
+                (function() {{
+                    const doc = window.parent.document;
+                    function runTicker() {{
+                        const badge = doc.getElementById('cycle-countdown-badge');
+                        if (!badge) return;
+                        const nextTimeMs = parseInt(badge.getAttribute('data-next-run-ms'), 10);
+                        if (isNaN(nextTimeMs)) return;
+                        
+                        const now = Date.now();
+                        const diff = nextTimeMs - now;
+                        if (diff <= 0) {{
+                            badge.innerHTML = '⏱️ Cycle Timeout: Running...';
+                            return;
+                        }}
+                        const mins = Math.floor(diff / 60000);
+                        const secs = Math.floor((diff % 60000) / 1000);
+                        const padSecs = String(secs).padStart(2, '0');
+                        badge.innerHTML = '⏱️ Cycle Timeout in: ' + mins + 'm ' + padSecs + 's';
+                    }}
+                    
+                    // Run ticker every second
+                    const intervalId = setInterval(runTicker, 1000);
+                    runTicker();
+                    
+                    // Clean up interval on iframe unload to prevent leaks
+                    window.addEventListener('unload', () => {{
+                        clearInterval(intervalId);
+                    }});
+                }})();
+            </script>
+            """, height=0, width=0)
+        except Exception as e:
+            logger.error(f"Error rendering dynamic countdown component: {e}")
 
     # Auto-refresh logic
     if auto_refresh:

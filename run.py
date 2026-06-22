@@ -81,6 +81,7 @@ def main():
         max_live_orders_per_cycle=settings.max_live_orders_per_cycle,
         paper_mode=paper_mode,
         enable_yes_no_arb=True,
+        interval=args.interval,
     )
 
     # Set up signal handlers for graceful shutdown

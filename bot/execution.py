@@ -102,7 +102,7 @@ class ExecutionEngine:
             params = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
             try:
                 data = client.get_balance_allowance(params)
-                balance = float(data.get("balance", 0.0))
+                balance = float(data.get("balance", 0.0)) / 1e6
                 error_msg = None
                 connected = True
                 status_text = "Connected"
@@ -421,8 +421,7 @@ class ExecutionEngine:
             client = self._get_client()
             params = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
             data = client.get_balance_allowance(params)
-            
-            balance = float(data.get("balance", 0.0))
+            balance = float(data.get("balance", 0.0)) / 1e6
             return balance
         except Exception as e:
             logger.error("Error fetching collateral balance: %s", e, exc_info=True)

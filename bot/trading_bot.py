@@ -83,8 +83,10 @@ class PolymarketTradingBot:
                  arb_max_per_market: float = 0.05,
                  slippage_tolerance: float = 0.015,
                  use_limit_orders: bool = False,
-                 quote_aggressiveness: float = 0.3):
+                 quote_aggressiveness: float = 0.3,
+                 interval: int = 60):
 
+        self.interval = interval
         self.capital = capital
         self.constraints = constraints or PortfolioConstraints()
         self.model = model or EnsembleModel()
@@ -1529,6 +1531,7 @@ class PolymarketTradingBot:
                     source="trading_bot",
                     metadata={"cycle": self.cycles_completed}
                 )
+                self.save_state()
                 return
 
             allocations = self.optimize_portfolio(markets)
@@ -1544,6 +1547,7 @@ class PolymarketTradingBot:
                     source="trading_bot",
                     metadata={"cycle": self.cycles_completed, "markets_found": len(markets)}
                 )
+                self.save_state()
                 return
 
             if self.paper_mode:
@@ -1601,6 +1605,7 @@ class PolymarketTradingBot:
                 source="trading_bot",
                 metadata={"cycle": self.cycles_completed}
             )
+            self.save_state()
 
     def print_performance_report(self):
         """Print a formatted performance report"""
@@ -1891,6 +1896,8 @@ class PolymarketTradingBot:
     def save_state(self, path: str = "bot_state.json"):
         """Save bot state to JSON file for persistence."""
         try:
+            from datetime import timedelta
+            next_run = datetime.now() + timedelta(minutes=getattr(self, 'interval', 60))
             state = {
                 'trade_history': self.trade_history,
                 'positions': self.positions,
@@ -1905,13 +1912,15 @@ class PolymarketTradingBot:
                 'peak_portfolio_value': self.peak_portfolio_value,
                 'api_failures': self.api_failures,
                 'alerts': self.alert_manager.get_recent_alerts(limit=1000),  # Save all alerts
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now().isoformat(),
+                'interval': getattr(self, 'interval', 60),
+                'next_run_timestamp': next_run.isoformat()
             }
 
             # Convert non-serializable objects
             serializable_state = json.loads(json.dumps(state, default=self._make_serializable))
 
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 json.dump(serializable_state, f, indent=2)
 
             logger.info(f"Bot state saved to {path}")
@@ -1928,12 +1937,14 @@ class PolymarketTradingBot:
                 logger.info(f"No state file found at {path}, starting fresh")
                 return False
 
-            with open(path, 'r') as f:
+            with open(path, 'r', encoding='utf-8') as f:
                 state = json.load(f)
 
             # Restore state
             self.trade_history = state.get('trade_history', [])
             self.positions = state.get('positions', {})
+            self.interval = state.get('interval', getattr(self, 'interval', 60))
+            self.next_run_timestamp = state.get('next_run_timestamp')
             self.performance_metrics = state.get('performance_metrics', {
                 'total_trades': 0,
                 'winning_trades': 0,
@@ -1971,7 +1982,7 @@ class PolymarketTradingBot:
                     shutil.copy2(self.alert_manager.alert_file, self.alert_manager.alert_file + '.backup')
 
                 # Write restored alerts
-                with open(self.alert_manager.alert_file, 'w') as f:
+                with open(self.alert_manager.alert_file, 'w', encoding='utf-8') as f:
                     json.dump(alerts_data, f, indent=2)
 
             logger.info(f"Bot state loaded from {path}: {len(self.trade_history)} trades, "
