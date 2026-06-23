@@ -53,11 +53,11 @@ class Settings:
             max_drawdown=float(os.getenv('MAX_DRAWDOWN', 0.15)),
             min_bet_size=float(os.getenv('MIN_BET_SIZE', 0.02)),
             category_limits={
-                'Crypto': 0.30,
-                'Politics': 0.25,
-                'Sports': 0.20,
-                'Science': 0.15,
-                'default': 0.25
+                'Crypto': float(os.getenv('CRYPTO', 0.30)),
+                'Politics': float(os.getenv('POLITICS', 0.25)),
+                'Sports': float(os.getenv('SPORTS', 0.20)),
+                'Science': float(os.getenv('SCIENCE', 0.15)),
+                'default': float(os.getenv('DEFAULT_LIMIT', 0.25))
             }
         )
 

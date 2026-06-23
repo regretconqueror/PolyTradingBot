@@ -421,6 +421,52 @@ class TestTradingBot(unittest.TestCase):
         self.assertAlmostEqual(signal.sum_price, 0.926)
         self.assertAlmostEqual(signal.edge, 0.064)
 
+    def test_risk_limit_exit_signals(self):
+        """Test that RISK_LIMIT exit signals are generated when a category or position limit is violated"""
+        from bot.trading_bot import ExitReason
+        token_id = "TOKEN_BREACH"
+        
+        # Setup trade history to provide entry info
+        self.bot.trade_history = [{
+            'status': 'filled',
+            'token_id': token_id,
+            'execution_price': 0.50,
+            'filled_at': datetime.now().isoformat(),
+            'side': 'BUY'
+        }]
+        
+        # Setup position in risk manager
+        self.bot.risk_manager.positions[token_id] = {
+            'size': 1000.0,
+            'entry_price': 0.50,
+            'side': 'BUY',
+            'category': 'Crypto',
+            'timestamp': datetime.now(),
+            'unrealized_pnl': 0.0,
+            'realized_pnl': 0.0
+        }
+        
+        # Setup category breach violation
+        risk_violations = [{
+            'type': 'category_exposure',
+            'category': 'Crypto',
+            'current': 0.45,
+            'limit': 0.30,
+            'message': 'Category Crypto exposure 45.0% exceeds limit 30.0%'
+        }]
+        
+        signals = self.bot.evaluate_exit_signals(
+            token_id=token_id,
+            current_price=0.52,
+            estimated_prob=0.51,
+            market={"category": "Crypto", "price": 0.52},
+            risk_violations=risk_violations
+        )
+        
+        self.assertTrue(len(signals) > 0)
+        self.assertEqual(signals[0].reason, ExitReason.RISK_LIMIT)
+        self.assertEqual(signals[0].token_id, token_id)
+
 
 if __name__ == '__main__':
     unittest.main()

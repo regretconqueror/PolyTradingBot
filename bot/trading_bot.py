@@ -698,7 +698,8 @@ class PolymarketTradingBot:
         return False, 0.0
 
     def evaluate_exit_signals(self, token_id: str, current_price: float,
-                               estimated_prob: float, market: Dict) -> List[ExitSignal]:
+                               estimated_prob: float, market: Dict,
+                               risk_violations: Optional[List[Dict]] = None) -> List[ExitSignal]:
         """
         Check ALL exit signals for a position and return list of triggered exits.
         Inspired by Freqtrade's populate_exit_trend — returns ExitSignal objects
@@ -775,6 +776,35 @@ class PolymarketTradingBot:
                 confidence=0.8
             ))
 
+        # 6. Risk limit exit
+        if risk_violations:
+            for violation in risk_violations:
+                risk_triggered = False
+                v_type = violation.get('type')
+                
+                if v_type == 'single_position' and violation.get('token_id') == token_id:
+                    risk_triggered = True
+                elif v_type == 'category_exposure':
+                    position_category = self.risk_manager.positions.get(token_id, {}).get('category', 'default')
+                    if violation.get('category') == position_category:
+                        risk_triggered = True
+                elif v_type == 'total_exposure':
+                    risk_triggered = True
+                
+                if risk_triggered:
+                    signals.append(ExitSignal(
+                        token_id=token_id,
+                        reason=ExitReason.RISK_LIMIT,
+                        current_price=current_price,
+                        entry_price=entry_price,
+                        estimated_prob=estimated_prob,
+                        market_price=market.get('price', current_price),
+                        unrealized_pnl=pnl,
+                        hold_duration_hours=hold_duration,
+                        confidence=1.0  # High confidence to force exit
+                    ))
+                    break
+
         return signals
 
     def manage_exits(self) -> Tuple[List[Dict], List[Dict]]:
@@ -805,20 +835,32 @@ class PolymarketTradingBot:
             self._last_position_poll = now
             # Rebuild positions from trade history to catch any WebSocket drops
             self.update_positions_from_trades()
-            # Force price history refresh for all tokens
-            for token_id in self.risk_manager.positions:
-                price = self.api.get_price(token_id)
-                if price > 0:
-                    self._track_position_price(token_id, price)
+
+        # Fetch current prices once for risk checks and reuse
+        current_prices = {}
+        for token_id in list(self.risk_manager.positions.keys()):
+            price = self.api.get_price(token_id)
+            if price > 0:
+                current_prices[token_id] = price
+                self._track_position_price(token_id, price)
+
+        # Calculate portfolio value including cash
+        position_value = self.risk_manager.calculate_portfolio_value(current_prices, apply_slippage=True)
+        invested_value = sum(
+            abs(pos['size']) * current_prices.get(tid, pos['entry_price'])
+            for tid, pos in self.risk_manager.positions.items()
+        )
+        cash_value = max(0.0, self.capital - invested_value)
+        portfolio_value = position_value + cash_value
+
+        # Calculate risk violations once
+        risk_violations = self.risk_manager.check_risk_limits(current_prices, portfolio_value)
 
         for token_id in list(self.risk_manager.positions.keys()):
             try:
-                current_price = self.api.get_price(token_id)
+                current_price = current_prices.get(token_id, 0.0)
                 if current_price <= 0:
                     continue
-
-                # Track price for momentum
-                self._track_position_price(token_id, current_price)
 
                 # Get current market's raw data for time-exit checks
                 market = self._token_market_cache.get(token_id, {})
@@ -833,7 +875,7 @@ class PolymarketTradingBot:
                 estimated_prob = float(self.model.estimate_probability(market_data))
 
                 # Evaluate all exit signals
-                signals = self.evaluate_exit_signals(token_id, current_price, estimated_prob, market)
+                signals = self.evaluate_exit_signals(token_id, current_price, estimated_prob, market, risk_violations)
                 exit_signals.extend(signals)
 
                 if not signals:
@@ -1060,9 +1102,10 @@ class PolymarketTradingBot:
                 result = self.execution_engine.execute_market_order(
                     token_id=exit_order['token_id'],
                     side=exit_order['side_to_close'],
-                    size=exit_order['exit_value'],
+                    size=exit_order['size'],
                     price=exit_price
                 )
+
                 if result.get('status') == 'success':
                     actual_fill_price = float(result.get('price') or exit_price)
                     realized_pnl = (actual_fill_price - entry_price) * size_shares
@@ -1076,7 +1119,7 @@ class PolymarketTradingBot:
 
     def fetch_markets(self, min_edge: float = 0.03) -> List[Market]:
         logger.info("Fetching markets from Polymarket...")
-        raw_markets = self.api.get_active_markets(limit=50)
+        raw_markets = self.api.get_active_markets(limit=100)
 
         # Rebuild token_id → raw_market cache for exit signal time-exit checks
         self._token_market_cache.clear()
@@ -1902,6 +1945,7 @@ class PolymarketTradingBot:
                 'trade_history': self.trade_history,
                 'positions': self.positions,
                 'performance_metrics': self.performance_metrics,
+                'performance_log': self.performance_log,
                 'risk_manager': {
                     'positions': self.risk_manager.positions,
                     'price_history': self.risk_manager.price_history,
@@ -1943,6 +1987,7 @@ class PolymarketTradingBot:
             # Restore state
             self.trade_history = state.get('trade_history', [])
             self.positions = state.get('positions', {})
+            self.performance_log = state.get('performance_log', [])
             self.interval = state.get('interval', getattr(self, 'interval', 60))
             self.next_run_timestamp = state.get('next_run_timestamp')
             self.performance_metrics = state.get('performance_metrics', {

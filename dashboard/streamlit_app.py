@@ -46,6 +46,134 @@ def clean_html(html_str: str) -> str:
     dedented = textwrap.dedent(html_str).strip()
     return re.sub(r'\s+', ' ', dedented)
 
+def get_performance_history(bot):
+    """Retrieve or reconstruct performance history from bot state"""
+    if hasattr(bot, 'performance_log') and len(bot.performance_log) >= 2:
+        return bot.performance_log
+
+    history = []
+    if not hasattr(bot, 'trade_history') or not bot.trade_history:
+        return history
+
+    # Sort trades by timestamp
+    trades = sorted(bot.trade_history, key=lambda x: x.get('timestamp', ''))
+    
+    # Calculate starting timestamp (e.g. 1 hour before first trade)
+    if trades:
+        try:
+            first_time = datetime.fromisoformat(trades[0]['timestamp'])
+            init_time = first_time - timedelta(hours=1)
+            history.append({
+                'timestamp': init_time.isoformat(),
+                'realized_pnl': 0.0,
+                'expected_pnl': 0.0,
+                'total_pnl': 0.0,
+                'total_trades': 0,
+                'win_rate': 0.0
+            })
+        except Exception:
+            pass
+
+    running_pnl = 0.0
+    total_trades = 0
+    wins = 0
+    for t in trades:
+        # Generate expected P&L increment: size * edge
+        edge = float(t.get('edge', 0.05))
+        size = float(t.get('filled_value', t.get('size', 10.0)))
+        pnl = size * edge
+        running_pnl += pnl
+        total_trades += 1
+        if pnl >= 0:
+            wins += 1
+        
+        history.append({
+            'timestamp': t.get('timestamp'),
+            'realized_pnl': 0.0,
+            'expected_pnl': running_pnl,
+            'total_pnl': running_pnl,
+            'total_trades': total_trades,
+            'win_rate': wins / total_trades
+        })
+    return history
+
+def create_portfolio_value_chart(performance_history, timeframe, capital, layout=None, theme_mode="Dark Mode"):
+    """Create a clean line chart showing portfolio net worth over time for the selected timeframe"""
+    if layout is None:
+        layout = DARK_LAYOUT if theme_mode == "Dark Mode" else LIGHT_LAYOUT
+    if not performance_history:
+        return None
+
+    df = pd.DataFrame(performance_history)
+    if 'timestamp' not in df.columns or 'total_pnl' not in df.columns:
+        return None
+
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    df = df.sort_values('timestamp')
+
+    latest_time = df['timestamp'].max()
+    if timeframe == "1D":
+        threshold = latest_time - timedelta(days=1)
+    elif timeframe == "1W":
+        threshold = latest_time - timedelta(days=7)
+    elif timeframe == "1M":
+        threshold = latest_time - timedelta(days=30)
+    elif timeframe == "1Y":
+        threshold = latest_time - timedelta(days=365)
+    elif timeframe == "YTD":
+        threshold = datetime(latest_time.year, 1, 1)
+    else: # ALL
+        threshold = df['timestamp'].min()
+
+    filtered_df = df[df['timestamp'] >= threshold].copy()
+
+    # If filtered data is too sparse, keep original
+    if len(filtered_df) < 2:
+        filtered_df = df.copy()
+
+    fig = go.Figure()
+    
+    is_light = theme_mode == "Light Mode"
+    line_color = '#3b82f6'
+    fill_color = 'rgba(59, 130, 246, 0.08)'
+
+    fig.add_trace(go.Scatter(
+        x=filtered_df['timestamp'],
+        y=filtered_df['total_pnl'] + capital, # Net Worth = capital + pnl
+        mode='lines',
+        name='Net Worth ($)',
+        line=dict(color=line_color, width=2.5, shape='spline'),
+        fill='tozeroy',
+        fillcolor=fill_color,
+        hovertemplate='<b>%{x}</b><br>Net Worth: $%{y:,.2f}<extra></extra>',
+    ))
+
+    clean_layout = layout.copy()
+    clean_layout.update(
+        title="",
+        xaxis=dict(
+            showgrid=False,
+            showticklabels=False,
+            zeroline=False,
+            showline=False,
+            fixedrange=True
+        ),
+        yaxis=dict(
+            showgrid=False,
+            showticklabels=False,
+            zeroline=False,
+            showline=False,
+            fixedrange=True
+        ),
+        margin=dict(l=0, r=0, t=10, b=0),
+        height=180,
+        showlegend=False
+    )
+    
+    fig.update_layout(**clean_layout)
+    return fig
+
+
 def get_bot_pids() -> list:
     """Get the PIDs of running run.py processes."""
     pids = []
@@ -843,13 +971,16 @@ def section_header(title: str, subtitle: str = ""):
 
 @st.fragment(run_every=1.0)
 def render_header_time():
-    """Render dynamic live ticking system time in IST timezone"""
+    """Render dynamic live ticking system time in IST and UTC timezones"""
     from datetime import timezone
-    ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    utc_now = datetime.now(timezone.utc)
+    ist_now = utc_now + timedelta(hours=5, minutes=30)
     ist_time_str = ist_now.strftime("%Y-%m-%d %H:%M:%S IST")
+    utc_time_str = utc_now.strftime("%Y-%m-%d %H:%M:%S UTC")
     st.markdown(f"""
-    <div style="font-family: monospace; font-size: 0.78rem; color: #888; display: inline-flex; align-items: center; gap: 6px; margin-top: 2px;">
-        <span style="color: #a78bfa; font-weight: 600;">🕒 Live Time:</span> {ist_time_str}
+    <div style="font-family: monospace; font-size: 0.78rem; color: #888; display: flex; flex-direction: column; gap: 2px; margin-top: 2px;">
+        <div><span style="color: #a78bfa; font-weight: 600;">🕒 IST Time:</span> {ist_time_str}</div>
+        <div><span style="color: #6366f1; font-weight: 600;">🌐 UTC Time:</span> {utc_time_str}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -862,7 +993,8 @@ def initialize_bot():
             max_total_exposure=settings.max_exposure,
             max_single_position=settings.max_position,
             max_drawdown=settings.max_drawdown,
-            min_bet_size=settings.min_bet_size
+            min_bet_size=settings.min_bet_size,
+            max_category_exposure=settings.category_limits
         )
 
         # Use EnsembleModel as default (can be made configurable)
@@ -1151,7 +1283,7 @@ def display_allocations_table(allocations_df):
 def fetch_5min_crypto_events():
     """Fetch active 5-minute prediction contracts from Polymarket API (tag_id=102892)"""
     try:
-        url = "https://gamma-api.polymarket.com/events?active=true&tag_id=102892&limit=100"
+        url = "https://gamma-api.polymarket.com/events?active=true&tag_id=102892&limit=100&order=startDate&ascending=false"
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
             events = response.json()
@@ -1210,9 +1342,22 @@ def render_crypto_markets_tab(bot):
             except:
                 yes_price, no_price = 50.0, 50.0
                 
+            # Format time evaluation range in UTC only
+            end_date_str = market.get("endDate")
+            try:
+                from datetime import timezone
+                end_dt = datetime.fromisoformat(end_date_str.replace("Z", "+00:00"))
+                start_dt = end_dt - timedelta(minutes=5)
+                start_str = start_dt.strftime("%I:%M%p").lstrip('0')
+                end_str = end_dt.strftime("%I:%M%p").lstrip('0')
+                date_str = start_dt.strftime("%B %d")
+                utc_question = f"{coin_name} Up or Down - {date_str}, {start_str}-{end_str} UTC"
+            except Exception:
+                utc_question = market.get("question", f"{coin_name} Price Contract")
+
             coin_data[coin_name] = {
                 "live": True,
-                "question": market.get("question", f"{coin_name} Price Contract"),
+                "question": utc_question,
                 "yes_price": yes_price,
                 "no_price": no_price,
                 "accepting_orders": market.get("acceptingOrders", False),
@@ -1229,9 +1374,23 @@ def render_crypto_markets_tab(bot):
             yes_p = st.session_state[sim_state_key]
             no_p = 100.0 - yes_p
             
+            # Format timeframe window for simulated data in UTC
+            try:
+                from datetime import timezone
+                now_utc = datetime.now(timezone.utc)
+                minute = (now_utc.minute // 5 + 1) * 5
+                end_dt = now_utc.replace(minute=0, second=0, microsecond=0) + timedelta(minutes=minute)
+                start_dt = end_dt - timedelta(minutes=5)
+                start_str = start_dt.strftime("%I:%M%p").lstrip('0')
+                end_str = end_dt.strftime("%I:%M%p").lstrip('0')
+                date_str = start_dt.strftime("%B %d")
+                sim_question = f"{coin_name} Up or Down - {date_str}, {start_str}-{end_str} UTC"
+            except Exception:
+                sim_question = f"Will {coin_name} be UP or DOWN at the next 5-minute candle close?"
+
             coin_data[coin_name] = {
                 "live": False,
-                "question": f"Will {coin_name} be UP or DOWN at the next 5-minute candle close?",
+                "question": sim_question,
                 "yes_price": yes_p,
                 "no_price": no_p,
                 "accepting_orders": True,
@@ -1438,85 +1597,191 @@ def main():
 
     with col_right:
         interval_mins = getattr(bot, 'interval', 60)
+        
+        # Render the badges row using components.html to allow dynamic ticking without sandbox restrictions
+        api_connected = conn.get("connected", False)
+        api_status = conn.get("status_text", "CONNECTED" if api_connected else "DISCONNECTED")
+        
+        if api_connected:
+            api_badge_html = f'''
+            <span class="badge" style="background:rgba(16,185,129,0.1); border:1px solid #10b981; color:#10b981;">
+                <span class="status-dot" style="background:#10b981; box-shadow:0 0 8px #10b981;"></span>
+                API: {api_status}
+            </span>
+            '''
+        else:
+            api_badge_html = f'''
+            <span class="badge" style="background:rgba(255,68,68,0.15); border:1px solid #ff4444; color:#ff4444;">
+                <span class="status-dot" style="background:#ff4444; box-shadow:0 0 8px #ff4444;"></span>
+                API: {api_status}
+            </span>
+            '''
+            
         if bot_running:
-            bot_badge = clean_html('''
-            <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(16,185,129,0.1); border:1px solid #10b981; color:#10b981; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                <span class="status-dot live"></span>
+            bot_badge_html = '''
+            <span class="badge" style="background:rgba(16,185,129,0.1); border:1px solid #10b981; color:#10b981;">
+                <span class="status-dot" style="background:#10b981; box-shadow:0 0 8px #10b981;"></span>
                 Bot: Active
             </span>
-            ''')
+            '''
         else:
-            bot_badge = clean_html('''
-            <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(148,163,184,0.1); border:1px solid #94a3b8; color:#94a3b8; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                <span class="status-dot off"></span>
+            bot_badge_html = '''
+            <span class="badge" style="background:rgba(148,163,184,0.1); border:1px solid #94a3b8; color:#94a3b8;">
+                <span class="status-dot" style="background:#94a3b8;"></span>
                 Bot: Inactive
             </span>
-            ''')
+            '''
+            
+        # Build Mode badge HTML
+        is_paper = getattr(bot, 'paper_mode', True)
+        if is_paper:
+            mode_badge_html = '''
+            <span class="badge" style="background:rgba(167,139,250,0.15); border:1px solid #a78bfa; color:#a78bfa;">
+                <span class="status-dot" style="background:#a78bfa; box-shadow:0 0 8px #a78bfa;"></span>
+                Mode: Paper
+            </span>
+            '''
+        else:
+            mode_badge_html = '''
+            <span class="badge" style="background:rgba(245,158,11,0.15); border:1px solid #f59e0b; color:#f59e0b;">
+                <span class="status-dot" style="background:#f59e0b; box-shadow:0 0 8px #f59e0b;"></span>
+                Mode: Live
+            </span>
+            '''
 
         next_run_str = getattr(bot, 'next_run_timestamp', None)
+        countdown_script = ""
+        
         if bot_running and next_run_str:
             try:
                 next_run_dt = datetime.fromisoformat(next_run_str)
                 next_run_epoch = int(next_run_dt.timestamp() * 1000)
                 
-                # Calculate initial remaining time in Python to avoid flashing "Calculating..."
+                # Calculate initial time on server
                 now_dt = datetime.now()
                 diff_seconds = int((next_run_dt - now_dt).total_seconds())
                 if diff_seconds <= 0:
-                    initial_text = "⏱️ Cycle Timeout: Running..."
+                    initial_text = "⏱️ Next: Running..."
                 else:
                     initial_mins = diff_seconds // 60
                     initial_secs = diff_seconds % 60
-                    initial_text = f"⏱️ Cycle Timeout in: {initial_mins}m {initial_secs:02d}s"
-
-                cycle_timeout_badge = clean_html(f'''
-                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(6,182,212,0.08); border:1px solid var(--accent-cyan); color:var(--accent-cyan); border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                    <span class="status-dot live" style="background:var(--accent-cyan) !important; box-shadow:0 0 8px var(--accent-cyan) !important; width:5px; height:5px; margin-right:2px; display:inline-block; vertical-align:middle;"></span>
-                    <span class="countdown-text" id="cycle-countdown-badge" data-next-run-ms="{next_run_epoch}">{initial_text}</span>
+                    initial_text = f"⏱️ Next in: {initial_mins}m {initial_secs:02d}s"
+                    
+                cycle_badge_html = f'''
+                <span class="badge" id="countdown-badge" style="background:rgba(6,182,212,0.08); border:1px solid #06b6d4; color:#06b6d4;">
+                    <span class="status-dot" style="background:#06b6d4; box-shadow:0 0 8px #06b6d4;"></span>
+                    <span id="countdown-text">{initial_text}</span>
                 </span>
-                ''')
+                '''
+                
+                countdown_script = f'''
+                <script>
+                    (function() {{
+                        const nextTimeMs = {next_run_epoch};
+                        function runTicker() {{
+                            const textEl = document.getElementById('countdown-text');
+                            if (!textEl) return;
+                            const now = Date.now();
+                            const diff = nextTimeMs - now;
+                            if (diff <= 0) {{
+                                textEl.innerHTML = '⏱️ Next: Running...';
+                                return;
+                            }}
+                            const mins = Math.floor(diff / 60000);
+                            const secs = Math.floor((diff % 60000) / 1000);
+                            const padSecs = String(secs).padStart(2, '0');
+                            textEl.innerHTML = '⏱️ Next in: ' + mins + 'm ' + padSecs + 's';
+                        }}
+                        setInterval(runTicker, 1000);
+                        runTicker();
+                    }})();
+                </script>
+                '''
             except Exception:
-                cycle_timeout_badge = clean_html('''
-                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(148,163,184,0.1); border:1px solid #94a3b8; color:#94a3b8; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                    <span class="status-dot off" style="width:5px; height:5px; margin-right:2px; display:inline-block; vertical-align:middle;"></span>
-                    ⏱️ Cycle Timeout: --
+                cycle_badge_html = '''
+                <span class="badge" style="background:rgba(148,163,184,0.1); border:1px solid #94a3b8; color:#94a3b8;">
+                    <span class="status-dot" style="background:#94a3b8;"></span>
+                    ⏱️ Next: --
                 </span>
-                ''')
-            except Exception:
-                cycle_timeout_badge = clean_html('''
-                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(148,163,184,0.1); border:1px solid #94a3b8; color:#94a3b8; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                    <span class="status-dot off" style="width:5px; height:5px; margin-right:2px; display:inline-block; vertical-align:middle;"></span>
-                    ⏱️ Cycle Timeout: --
-                </span>
-                ''')
+                '''
         else:
             if bot_running:
-                cycle_timeout_badge = clean_html(f'''
-                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(6,182,212,0.08); border:1px solid var(--accent-cyan); color:var(--accent-cyan); border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                    <span class="status-dot live" style="background:var(--accent-cyan) !important; box-shadow:0 0 8px var(--accent-cyan) !important; width:5px; height:5px; margin-right:2px; display:inline-block; vertical-align:middle;"></span>
-                    ⏱️ Cycle Timeout: {interval_mins}m
+                cycle_badge_html = f'''
+                <span class="badge" style="background:rgba(6,182,212,0.08); border:1px solid #06b6d4; color:#06b6d4;">
+                    <span class="status-dot" style="background:#06b6d4; box-shadow:0 0 8px #06b6d4;"></span>
+                    ⏱️ Next: {interval_mins}m
                 </span>
-                ''')
+                '''
             else:
-                cycle_timeout_badge = clean_html('''
-                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(148,163,184,0.1); border:1px solid #94a3b8; color:#94a3b8; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                    <span class="status-dot off" style="width:5px; height:5px; margin-right:2px; display:inline-block; vertical-align:middle;"></span>
-                    ⏱️ Cycle Timeout: Offline
+                cycle_badge_html = '''
+                <span class="badge" style="background:rgba(148,163,184,0.1); border:1px solid #94a3b8; color:#94a3b8;">
+                    <span class="status-dot" style="background:#94a3b8;"></span>
+                    ⏱️ Next: Offline
                 </span>
-                ''')
+                '''
 
+        badges_row_html = f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{
+                    margin: 0;
+                    padding: 0;
+                    overflow: hidden;
+                    background: transparent;
+                    display: flex;
+                    justify-content: flex-end;
+                    align-items: center;
+                    height: 100%;
+                }}
+                .badges-container {{
+                    display: flex;
+                    gap: 6px;
+                    flex-wrap: wrap;
+                    justify-content: flex-end;
+                    font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+                }}
+                .badge {{
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 5px;
+                    border-radius: 16px;
+                    padding: 2px 7px;
+                    font-size: 0.68rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    white-space: nowrap;
+                }}
+                .status-dot {{
+                    width: 5px;
+                    height: 5px;
+                    border-radius: 50%;
+                    display: inline-block;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="badges-container">
+                {api_badge_html}
+                {bot_badge_html}
+                {mode_badge_html}
+                {cycle_badge_html}
+            </div>
+            {countdown_script}
+        </body>
+        </html>
+        '''
+
+        # Render the badges component with height=38 to ensure wrapping is safe if width is ever squeezed
+        components.html(badges_row_html, height=38)
+        
+        # Render the proxy details & balance underneath
+        proxy_short = f"{conn['proxy_address'][:6]}...{conn['proxy_address'][-4:]}" if conn.get('proxy_address') else "Unknown Proxy"
         if conn.get("connected"):
-            proxy_short = f"{conn['proxy_address'][:6]}...{conn['proxy_address'][-4:]}" if conn.get('proxy_address') else "Unknown Proxy"
-            badge_html = clean_html(f'''
+            balance_html = clean_html(f'''
             <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px; padding-top:4px;">
-                <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; margin-bottom:4px;">
-                    <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(16,185,129,0.1); border:1px solid #10b981; color:#10b981; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                        <span class="status-dot live"></span>
-                        API: {conn.get("status_text", "Connected")}
-                    </span>
-                    {bot_badge}
-                    {cycle_timeout_badge}
-                </div>
                 <span style="font-family:monospace; font-size:0.72rem; color:#888;">
                     Proxy: {proxy_short}
                 </span>
@@ -1525,18 +1790,10 @@ def main():
                 </span>
             </div>
             ''')
-            st.markdown(badge_html, unsafe_allow_html=True)
+            st.markdown(balance_html, unsafe_allow_html=True)
         else:
-            badge_html = clean_html(f'''
+            balance_html = clean_html(f'''
             <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px; padding-top:4px;">
-                <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; margin-bottom:4px;">
-                    <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(92,96,128,0.1); border:1px solid #ff4444; color:#ff4444; border-radius:16px; padding:2px 10px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                        <span class="status-dot off"></span>
-                        API: {conn.get("status_text", "Disconnected")}
-                    </span>
-                    {bot_badge}
-                    {cycle_timeout_badge}
-                </div>
                 <span style="font-family:sans-serif; font-size:0.72rem; color:#ff4444;">
                     API Offline
                 </span>
@@ -1545,7 +1802,7 @@ def main():
                 </span>
             </div>
             ''')
-            st.markdown(badge_html, unsafe_allow_html=True)
+            st.markdown(balance_html, unsafe_allow_html=True)
 
     st.markdown("""<hr class="section-line">""", unsafe_allow_html=True)
 
@@ -1782,30 +2039,33 @@ def main():
 
     # Tab 3: Portfolio
     with tab3:
-        section_header("Portfolio Allocation", "Frank-Wolfe Kelly Criterion optimizer positions")
+        # 1. Resolve Allocations Data first (so we can display metrics)
+        allocations_df = pd.DataFrame()
+        status_val = "N/A"
+        iterations_val = "N/A"
+        fw_gap_val = "N/A"
+        final_obj_val = "N/A"
+        has_optimizer_data = False
 
-        # Generate current allocations based on bot's optimization
         if not markets_df.empty:
             try:
                 markets_for_optimization = markets_df['raw_market'].tolist()
-
-                # Run optimization with current bot settings
                 allocations, status, info = bot.optimizer.optimize(
                     markets_for_optimization,
                     bot.constraints
                 )
+                status_val = status.value
+                iterations_val = info.get('iterations', 'N/A')
+                fw_gap_val = info.get('fw_gap', 'N/A')
+                final_obj_val = info.get('final_objective', 'N/A')
+                has_optimizer_data = True
 
-                logger.info(f"Optimization {status.value} in {info.get('iterations', 0)} iterations")
-
-                # Convert allocations to display format
                 allocations_data = []
                 for i, (market, alloc) in enumerate(zip(markets_for_optimization, allocations)):
-                    if alloc < 0.001:  # Skip negligible allocations
+                    if alloc < 0.001:
                         continue
-
                     size_usd = alloc * bot.capital
                     direction = "YES" if market.edge > 0 else "NO"
-
                     allocations_data.append({
                         'Market': market.question[:50] + ('...' if len(market.question) > 50 else ''),
                         'Full Question': market.question,
@@ -1819,66 +2079,19 @@ def main():
                         'Token ID': market.token_id[:8] + '...',
                         'Condition ID': market.condition_id[:8] + '...'
                     })
-
                 allocations_df = pd.DataFrame(allocations_data)
-
-                if not allocations_df.empty:
-                    # Allocation summary
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Active Positions", len(allocations_df))
-                    with col2:
-                        total_allocation = allocations_df['Allocation (%)'].sum()
-                        st.metric("Total Allocation", f"{total_allocation:.1f}%")
-                    with col3:
-                        avg_position_size = allocations_df['Size ($)'].mean()
-                        st.metric("Avg Position Size", f"${avg_position_size:,.0f}")
-
-                    st.markdown("---")
-
-                    # Allocation charts and table
-                    col1, col2 = st.columns([1, 1])
-
-                    with col1:
-                        allocations_fig = create_allocations_chart(allocations_df, layout=plotly_layout, theme_mode=theme_mode)
-                        if allocations_fig:
-                            st.plotly_chart(allocations_fig, width="stretch")
-                        else:
-                            st.info("No significant allocations to display")
-
-                    with col2:
-                        st.subheader("Position Details")
-                        display_allocations_table(allocations_df)
-
-                    # Show optimization info
-                    with st.expander("Optimization Details"):
-                        st.write(f"**Status:** {status.value}")
-                        st.write(f"**Iterations:** {info.get('iterations', 'N/A')}")
-                        st.write(f"**Expected Log Utility:** {info.get('final_objective', 'N/A'):.6f}")
-                        st.write(f"**Frank-Wolfe Gap:** {info.get('fw_gap', 'N/A'):.6e}")
-
-                else:
-                    st.info("No significant allocations generated by optimizer")
-
             except Exception as e:
-                st.error(f"Error generating portfolio data: {str(e)}")
-                st.info("This is expected during initialization or when no clear opportunities exist")
-                # Fallback to placeholder
-                st.info("💡 Portfolio optimization runs during each trading cycle. Check the 'Performance' tab for latest allocation data.")
-
-                # Placeholder for allocation data
-                allocations_data = []
-                if len(markets_df) > 0:
-                    # Show top 5 markets by edge as example allocation
-                    # Convert Edge to numeric for sorting
+                # Fallback to top markets by edge as placeholder
+                if 'Edge' in markets_df.columns:
                     markets_df['Edge_Numeric'] = markets_df['Edge'].str.replace('%', '').astype(float)
                     top_markets = markets_df.nlargest(5, 'Edge_Numeric') if len(markets_df) >= 5 else markets_df
                     total_edge = top_markets['Edge_Numeric'].sum()
 
+                    allocations_data = []
                     for idx, (_, market) in enumerate(top_markets.iterrows()):
                         edge_val = float(market['Edge'].replace('%', ''))
                         allocation_pct = (edge_val / total_edge) * 100 if total_edge > 0 else 0
-                        size_usd = (allocation_pct / 100) * float(capital)
+                        size_usd = (allocation_pct / 100) * float(bot.capital)
 
                         allocations_data.append({
                             'Market': market['Market'],
@@ -1889,40 +2102,169 @@ def main():
                             'Your Probability': float(market['Your Probability'].replace('%', '')) / 100,
                             'Edge': float(market['Edge'].replace('%', '')) / 100
                         })
+                    allocations_df = pd.DataFrame(allocations_data)
 
-                allocations_df = pd.DataFrame(allocations_data)
+        # 2. Render Polymarket Profile & Profit/Loss box (Side-by-Side)
+        perf_history = get_performance_history(bot)
+        if not perf_history:
+            perf_history = [{
+                'timestamp': datetime.now().isoformat(),
+                'realized_pnl': 0.0,
+                'expected_pnl': 0.0,
+                'total_pnl': 0.0,
+                'total_trades': 0,
+                'win_rate': 0.0
+            }]
 
-                if not allocations_df.empty:
-                    # Allocation summary
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Active Positions", len(allocations_df))
-                    with col2:
-                        total_allocation = allocations_df['Allocation (%)'].sum()
-                        st.metric("Total Allocation", f"{total_allocation:.1f}%")
-                    with col3:
-                        avg_position_size = allocations_df['Size ($)'].mean()
-                        st.metric("Avg Position Size", f"${avg_position_size:,.0f}")
+        col_left, col_right = st.columns([1, 1.25])
+        
+        with col_left:
+            positions_value = allocations_df['Size ($)'].sum() if not allocations_df.empty else 0.0
+            biggest_win = bot.performance_metrics.get('biggest_win_history', 0.0)
+            predictions_count = bot.performance_metrics.get('total_trades', 0)
+            cycles = bot.cycles_completed
+            
+            st.markdown(
+                clean_html(f"""
+                <div style="background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; height: 100%; display: flex; flex-direction: column; justify-content: space-between; min-height: 290px;">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem;">
+                        <div style="position: relative; width: 70px; height: 70px; flex-shrink: 0;">
+                            <div style="width: 70px; height: 70px; border-radius: 50%; background: radial-gradient(circle, #f472b6 0%, #3b82f6 70%, #8b5cf6 100%);"></div>
+                            <div style="width: 20px; height: 20px; border-radius: 50%; background: #fbbf24; border: 2px solid var(--bg-surface); position: absolute; bottom: 0; right: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: #12131c; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">★</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 800; font-family: Space Grotesk; color: var(--text-bright); line-height: 1.2;">polybot</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">Joined Mar 2026 • {cycles} cycles</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; border-top: 1px solid var(--border); padding-top: 1.5rem; justify-content: space-between;">
+                        <div style="flex: 1; text-align: left;">
+                            <div style="font-size: 1.3rem; font-weight: 700; font-family: JetBrains Mono; color: var(--text-bright);">${positions_value:,.2f}</div>
+                            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-family: Space Grotesk; font-weight: 600; margin-top: 2px;">Positions Value</div>
+                        </div>
+                        <div style="width: 1px; background-color: var(--border); margin: 0 0.75rem;"></div>
+                        <div style="flex: 1; text-align: left;">
+                            <div style="font-size: 1.3rem; font-weight: 700; font-family: JetBrains Mono; color: var(--text-bright);">${biggest_win:,.2f}</div>
+                            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-family: Space Grotesk; font-weight: 600; margin-top: 2px;">Biggest Win</div>
+                        </div>
+                        <div style="width: 1px; background-color: var(--border); margin: 0 0.75rem;"></div>
+                        <div style="flex: 1; text-align: left;">
+                            <div style="font-size: 1.3rem; font-weight: 700; font-family: JetBrains Mono; color: var(--text-bright);">{predictions_count:,}</div>
+                            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-family: Space Grotesk; font-weight: 600; margin-top: 2px;">Predictions</div>
+                        </div>
+                    </div>
+                </div>
+                """),
+                unsafe_allow_html=True
+            )
 
-                    st.markdown("---")
+        with col_right:
+            with st.container(border=True):
+                # Header row: Profit/Loss label and ranges
+                col_header_title, col_header_range = st.columns([1, 1.25])
+                
+                with col_header_title:
+                    current_pnl = perf_history[-1]['total_pnl'] if perf_history else 0.0
+                    pnl_sign = "▲" if current_pnl >= 0 else "▼"
+                    pnl_class = "positive" if current_pnl >= 0 else "negative"
+                    st.markdown(
+                        f"<div class='{pnl_class}' style='font-family: Space Grotesk; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px; padding-top: 4px;'>"
+                        f"<span>{pnl_sign}</span> Profit/Loss"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+                
+                with col_header_range:
+                    timeframe = st.segmented_control(
+                        "Timeframe Selector",
+                        options=["1D", "1W", "1M", "1Y", "YTD", "ALL"],
+                        default="ALL",
+                        key="portfolio_timeframe",
+                        label_visibility="collapsed"
+                    )
 
-                    # Allocation charts and table
-                    col1, col2 = st.columns([1, 1])
-
-                    with col1:
-                        allocations_fig = create_allocations_chart(allocations_df, layout=plotly_layout, theme_mode=theme_mode)
-                        if allocations_fig:
-                            st.plotly_chart(allocations_fig, width="stretch")
-                        else:
-                            st.info("No significant allocations to display")
-
-                    with col2:
-                        st.subheader("Position Details")
-                        display_allocations_table(allocations_df)
+                # Filter history based on range
+                df_perf = pd.DataFrame(perf_history)
+                df_perf['timestamp'] = pd.to_datetime(df_perf['timestamp'])
+                latest_time = df_perf['timestamp'].max()
+                
+                if timeframe == "1D":
+                    threshold = latest_time - timedelta(days=1)
+                elif timeframe == "1W":
+                    threshold = latest_time - timedelta(days=7)
+                elif timeframe == "1M":
+                    threshold = latest_time - timedelta(days=30)
+                elif timeframe == "1Y":
+                    threshold = latest_time - timedelta(days=365)
+                elif timeframe == "YTD":
+                    threshold = datetime(latest_time.year, 1, 1)
                 else:
-                    st.info("No current allocations to display")
+                    threshold = df_perf['timestamp'].min()
+                
+                df_timeframe = df_perf[df_perf['timestamp'] >= threshold].copy()
+                if not df_timeframe.empty:
+                    start_val = df_timeframe.iloc[0]['total_pnl']
+                    end_val = df_timeframe.iloc[-1]['total_pnl']
+                    pnl_diff = end_val - start_val
+                else:
+                    pnl_diff = current_pnl
+                
+                sign = "+" if pnl_diff >= 0 else ""
+                color = "#10b981" if pnl_diff >= 0 else "#ef4444"
+                timeframe_label = {
+                    "1D": "Past 24 Hours",
+                    "1W": "Past Week",
+                    "1M": "Past Month",
+                    "1Y": "Past Year",
+                    "YTD": "Year-To-Date",
+                    "ALL": "All-Time"
+                }.get(timeframe, "All-Time")
+                
+                st.markdown(
+                    f"<div style='margin-top: 0.2rem;'>"
+                    f"<span style='font-size: 1.8rem; font-weight: 800; font-family: Space Grotesk; color: var(--text-bright);'>${abs(pnl_diff):,.2f}</span>"
+                    f"<span style='font-size: 1.2rem; font-weight: 600; color: {color}; margin-left: 0.4rem;'>{sign}</span>"
+                    f"</div>"
+                    f"<div style='font-size: 0.75rem; color: var(--text-muted); font-family: Space Grotesk; margin-top: -2px;'>{timeframe_label}</div>",
+                    unsafe_allow_html=True
+                )
+                
+                # Plotly Chart
+                fig = create_portfolio_value_chart(
+                    perf_history,
+                    timeframe,
+                    bot.capital,
+                    layout=plotly_layout,
+                    theme_mode=theme_mode
+                )
+                if fig:
+                    st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("---")
+
+        # 3. Render Positions and Table Below
+        if not allocations_df.empty:
+            col1, col2 = st.columns([1, 1])
+
+            with col1:
+                allocations_fig = create_allocations_chart(allocations_df, layout=plotly_layout, theme_mode=theme_mode)
+                if allocations_fig:
+                    st.plotly_chart(allocations_fig, width="stretch")
+                else:
+                    st.info("No significant allocations to display")
+
+            with col2:
+                st.subheader("Position Details")
+                display_allocations_table(allocations_df)
+
+            if has_optimizer_data:
+                with st.expander("Optimization Details"):
+                    st.write(f"**Status:** {status_val}")
+                    st.write(f"**Iterations:** {iterations_val}")
+                    st.write(f"**Expected Log Utility:** {final_obj_val:.6f}" if isinstance(final_obj_val, float) else f"**Expected Log Utility:** {final_obj_val}")
+                    st.write(f"**Frank-Wolfe Gap:** {fw_gap_val:.6e}" if isinstance(fw_gap_val, float) else f"**Frank-Wolfe Gap:** {fw_gap_val}")
         else:
-            st.warning("No market data available for portfolio allocation")
+            st.info("No current allocations to display")
 
     # Tab 4: Performance
     with tab4:
@@ -2246,16 +2588,23 @@ def main():
                             source = alert.get('source', 'unknown')
                             message = alert.get('message', 'No message')
                             timestamp = alert.get('timestamp', 'Unknown time')
+                            time_str = timestamp
+                            if timestamp != 'Unknown time':
+                                try:
+                                    dt = datetime.fromisoformat(timestamp)
+                                    time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+                                except Exception:
+                                    pass
 
                             # Style based on level
                             if level == 'critical':
-                                st.error(f"🚨 **{source}** [{timestamp}]: {message}")
+                                st.error(f"🚨 **{source}** [{time_str}]: {message}")
                             elif level == 'error':
-                                st.error(f"❌ **{source}** [{timestamp}]: {message}")
+                                st.error(f"❌ **{source}** [{time_str}]: {message}")
                             elif level == 'warning':
-                                st.warning(f"⚠️ **{source}** [{timestamp}]: {message}")
+                                st.warning(f"⚠️ **{source}** [{time_str}]: {message}")
                             else:
-                                st.info(f"ℹ️ **{source}** [{timestamp}]: {message}")
+                                st.info(f"ℹ️ **{source}** [{time_str}]: {message}")
 
                             # Show metadata if available
                             metadata = alert.get('metadata', {})
@@ -2452,45 +2801,15 @@ def main():
     </div>
     """, unsafe_allow_html=True)
 
-    # Client-side dynamic ticking script using Same-Origin iframe
+    # Client-side dynamic ticking script using Same-Origin context via onerror hack
     next_run_str = getattr(bot, 'next_run_timestamp', None)
     if bot_running and next_run_str:
         try:
             next_run_dt = datetime.fromisoformat(next_run_str)
             next_run_epoch = int(next_run_dt.timestamp() * 1000)
-            components.html(f"""
-            <script>
-                (function() {{
-                    const doc = window.parent.document;
-                    function runTicker() {{
-                        const badge = doc.getElementById('cycle-countdown-badge');
-                        if (!badge) return;
-                        const nextTimeMs = parseInt(badge.getAttribute('data-next-run-ms'), 10);
-                        if (isNaN(nextTimeMs)) return;
-                        
-                        const now = Date.now();
-                        const diff = nextTimeMs - now;
-                        if (diff <= 0) {{
-                            badge.innerHTML = '⏱️ Cycle Timeout: Running...';
-                            return;
-                        }}
-                        const mins = Math.floor(diff / 60000);
-                        const secs = Math.floor((diff % 60000) / 1000);
-                        const padSecs = String(secs).padStart(2, '0');
-                        badge.innerHTML = '⏱️ Cycle Timeout in: ' + mins + 'm ' + padSecs + 's';
-                    }}
-                    
-                    // Run ticker every second
-                    const intervalId = setInterval(runTicker, 1000);
-                    runTicker();
-                    
-                    // Clean up interval on iframe unload to prevent leaks
-                    window.addEventListener('unload', () => {{
-                        clearInterval(intervalId);
-                    }});
-                }})();
-            </script>
-            """, height=0, width=0)
+            st.markdown(f"""
+            <img src="does-not-exist" onerror="(function(){{if(window.cycleCountdownIntervalId){{clearInterval(window.cycleCountdownIntervalId);}}function runTicker(){{const badge=document.getElementById('cycle-countdown-badge');if(!badge)return;const nextTimeMs=parseInt(badge.getAttribute('data-next-run-ms'),10);if(isNaN(nextTimeMs))return;const now=Date.now();const diff=nextTimeMs-now;if(diff<=0){{badge.innerHTML='⏱️ Cycle Timeout: Running...';clearInterval(window.cycleCountdownIntervalId);return;}}const mins=Math.floor(diff/60000);const secs=Math.floor((diff%60000)/1000);badge.innerHTML='⏱️ Cycle Timeout in: '+mins+'m '+String(secs).padStart(2,'0')+'s';}}window.cycleCountdownIntervalId=setInterval(runTicker,1000);runTicker();}})()" style="display:none;"/>
+            """, unsafe_allow_html=True)
         except Exception as e:
             logger.error(f"Error rendering dynamic countdown component: {e}")
 

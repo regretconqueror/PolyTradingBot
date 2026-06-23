@@ -61,6 +61,7 @@ def main():
         max_single_position=settings.max_position,
         max_drawdown=settings.max_drawdown,
         min_bet_size=settings.min_bet_size,
+        max_category_exposure=settings.category_limits,
     )
 
     model = EnsembleModel()
@@ -110,6 +111,11 @@ def main():
     # Load previous state if exists
     if args.state_file:
         bot.load_state(args.state_file)
+        # Ensure command-line arguments override values loaded from the state file
+        if args.interval is not None:
+            bot.interval = args.interval
+        if capital is not None:
+            bot.capital = capital
 
     if args.interval > 0:
         print(f"Starting continuous trading bot with {args.interval} minute intervals...")

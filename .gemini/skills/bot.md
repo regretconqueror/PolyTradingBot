@@ -1,24 +1,34 @@
 # /bot — Start the PolyTradingBot
 
 ## Description
-Starts the Polymarket Trading Bot in paper mode with default settings.
+Starts the Polymarket Trading Bot in paper mode along with the Streamlit dashboard.
 
 ## Instructions
 
 When the user invokes `/bot`, follow these steps:
 
-1. **Activate the virtual environment and start the bot** by running:
-   ```
-   .venv\Scripts\activate ; python run.py --mode paper --interval 60
-   ```
-   Run this from the workspace root: `c:\AI_WORK\PolyTradingBot`
+1. **Activate the virtual environment, start both the bot and dashboard, and open the browser**:
+   - Start the bot:
+     ```
+     .venv\Scripts\activate ; python -u run.py --mode paper --interval 60
+     ```
+   - Start the dashboard:
+     ```
+     .venv\Scripts\activate ; streamlit run dashboard/streamlit_app.py --server.headless true
+     ```
+   - Open the dashboard in the default browser:
+     ```
+     start http://localhost:8501
+     ```
+   Run these from the workspace root: `c:\AI_WORK\PolyTradingBot`. Note: Use `python -u` for unbuffered logs to capture the startup banner, and `--server.headless true` for Streamlit.
 
 2. **Report the startup banner** — The bot prints a banner with Capital, Mode, State file, and Model info. Relay this to the user.
 
-3. **The bot runs continuously** in 60-minute trading cycles. Let the user know:
+3. **Provide Status and Links** — Let the user know:
    - The bot is running in **paper trading** mode
-   - It will cycle every **60 minutes**
-   - They can ask you to stop it anytime (you'll kill the background task)
+   - The dashboard is running at [http://localhost:8501](http://localhost:8501)
+   - The bot will cycle every **60 minutes**
+   - They can ask you to stop either the bot or the dashboard anytime (you'll kill the background task)
 
 4. **If the user wants to customize**, they can say things like:
    - `/bot live` → run with `--mode live --confirm-live`
@@ -26,7 +36,7 @@ When the user invokes `/bot`, follow these steps:
    - `/bot interval 30` → run with `--interval 30`
    - These can be combined: `/bot capital 200 interval 15`
 
-   Parse the user's message for these options and adjust the command accordingly:
+   Parse the user's message for these options and adjust the bot startup command accordingly:
    - `live` → add `--mode live --confirm-live`
    - `capital <N>` → add `--capital <N>`
    - `interval <N>` → add `--interval <N>`
@@ -36,4 +46,4 @@ When the user invokes `/bot`, follow these steps:
 
    Wait for explicit user confirmation before running the live command.
 
-6. **Keep the bot running as a background task** so the user can continue chatting. Use async/background execution.
+6. **Keep both tasks running in the background** so the user can continue chatting. Use async/background execution.
