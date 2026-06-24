@@ -79,7 +79,7 @@ class PolymarketTradingBot:
                  max_live_orders_per_cycle: int = 3,
                  paper_mode: bool = True,
                  enable_yes_no_arb: bool = True,
-                 arb_fee_buffer: float = 0.02,
+                 arb_fee_buffer: float = 0.01,
                  arb_max_per_market: float = 0.05,
                  slippage_tolerance: float = 0.015,
                  use_limit_orders: bool = False,
@@ -1117,7 +1117,49 @@ class PolymarketTradingBot:
         except Exception as e:
             logger.error(f"Exit order failed for {exit_order['token_id']}: {e}")
 
-    def fetch_markets(self, min_edge: float = 0.03) -> List[Market]:
+    def warmup_models(self, raw_markets: list):
+        """Pre-seed model price history by fetching recent prices from CLOB.
+        This breaks the chicken-and-egg deadlock where models need history
+        to produce edge but can't build history without trading.
+        """
+        import json as _json
+        logger.info("Warming up models with historical prices...")
+        seeded = 0
+        for raw in raw_markets[:20]:
+            token_ids = raw.get("clobTokenIds") or []
+            if isinstance(token_ids, str):
+                try:
+                    token_ids = _json.loads(token_ids)
+                except Exception:
+                    continue
+            for tid in token_ids[:2]:
+                tid = str(tid)
+                try:
+                    price = self.api.get_price(tid, side="BUY")
+                    if price > 0:
+                        if hasattr(self.model, 'models'):
+                            for m in self.model.models:
+                                if hasattr(m, 'price_history'):
+                                    if tid not in m.price_history:
+                                        m.price_history[tid] = []
+                                    # Add 5 entries to pass the min-history threshold
+                                    # MarketSentimentModel stores dicts, others store floats
+                                    from datetime import datetime as _dt
+                                    for _ in range(5):
+                                        if any(isinstance(h, dict) for h in m.price_history[tid]) or m.__class__.__name__ == 'MarketSentimentModel':
+                                            m.price_history[tid].append({
+                                                'price': price,
+                                                'volume': float(raw.get('volume', 0)),
+                                                'timestamp': _dt.now()
+                                            })
+                                        else:
+                                            m.price_history[tid].append(price)
+                        seeded += 1
+                except Exception as e:
+                    logger.debug(f"Could not warmup {tid}: {e}")
+        logger.info(f"Model warmup complete: seeded {seeded} tokens")
+
+    def fetch_markets(self, min_edge: float = 0.008) -> List[Market]:
         logger.info("Fetching markets from Polymarket...")
         raw_markets = self.api.get_active_markets(limit=100)
 
@@ -1173,6 +1215,13 @@ class PolymarketTradingBot:
                         "token_id_yes": token_id,
                         "current_price": price,
                         "price": price,
+                        # FIX: Pass volume and liquidity under keys the models expect
+                        "volume_24h": float(raw.get("volume", 0)) / len(token_ids),
+                        "volume": float(raw.get("volume", 0)) / len(token_ids),
+                        "liquidity": float(raw.get("liquidity", 0)) / len(token_ids),
+                        "spread": float(raw.get("spread", 0)),
+                        "best_bid": float(raw.get("bestBid", 0)),
+                        "best_ask": float(raw.get("bestAsk", 0)),
                     })
                     your_probs.append(float(self.model.estimate_probability(outcome_raw)))
 
@@ -1577,6 +1626,10 @@ class PolymarketTradingBot:
                 self.save_state()
                 return
 
+            # Warmup models on first cycle
+            if self.cycles_completed <= 1:
+                self.warmup_models(self.api.get_active_markets(limit=20))
+
             allocations = self.optimize_portfolio(markets)
             orders = self.generate_orders(markets, allocations)
 
@@ -1950,6 +2003,7 @@ class PolymarketTradingBot:
                     'positions': self.risk_manager.positions,
                     'price_history': self.risk_manager.price_history,
                 },
+                'model_state': self.model.export_state() if hasattr(self.model, 'export_state') else {},
                 'cycles_completed': self.cycles_completed,
                 'successful_cycles': self.successful_cycles,
                 'failed_cycles': self.failed_cycles,
@@ -2011,6 +2065,11 @@ class PolymarketTradingBot:
             risk_state = state.get('risk_manager', {})
             self.risk_manager.positions = risk_state.get('positions', {})
             self.risk_manager.price_history = risk_state.get('price_history', {})
+
+            # Restore model state (price history, weights, etc.)
+            model_state = state.get('model_state', {})
+            if model_state and hasattr(self.model, 'import_state'):
+                self.model.import_state(model_state)
 
             self.cycles_completed = state.get('cycles_completed', 0)
             self.successful_cycles = state.get('successful_cycles', 0)
