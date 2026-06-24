@@ -7,6 +7,7 @@ from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta, timezone
 import logging
 from enum import Enum
+import os
 
 from core import ProjectFWOptimizer, Market, PortfolioConstraints, OptimizationStatus, TradeStatus
 from data import PolymarketAPI
@@ -1231,7 +1232,9 @@ class PolymarketTradingBot:
                     edge = prob - price
 
                     # Skip if edge doesn't meet minimum threshold
-                    if abs(edge) < min_edge:
+                    # FIX: Only keep POSITIVE edges (undervalued markets we can buy)
+                    # The bot only buys, so negative edges (overvalued) are useless
+                    if edge < min_edge:
                         continue
 
                     market = Market(
@@ -1255,6 +1258,24 @@ class PolymarketTradingBot:
                 continue
 
         logger.info(f"Selected {len(markets)} outcomes with edge > {min_edge:.1%}")
+
+        # FIX: Limit to top N markets by absolute edge so the optimizer
+        # concentrates capital into fewer, higher-conviction trades.
+        # With small capital (e.g. $17.38) and $5 Polymarket minimum order size,
+        # spreading across 79 markets gives each ~$0.22 — below the $5 minimum.
+        # Limiting to top markets ensures each allocation is large enough to trade.
+        max_markets = int(os.getenv("MAX_MARKETS_PER_CYCLE", "5"))
+        if len(markets) > max_markets:
+            # Sort by POSITIVE edge (most undervalued first) — bot only buys, can't short
+            markets.sort(key=lambda m: m.edge, reverse=True)
+            # Keep only markets with positive edge (undervalued)
+            positive_edge = [m for m in markets if m.edge > 0]
+            if positive_edge:
+                markets = positive_edge[:max_markets]
+            else:
+                markets = markets[:max_markets]
+            logger.info(f"Limited to top {max_markets} markets by positive edge for capital concentration")
+
         # Reset API failure counter on successful fetch
         self.api_failures = 0
         self.last_successful_fetch = datetime.now()
