@@ -1,0 +1,1286 @@
+[
+  {
+    "timestamp": "2026-06-15T22:55:00.055710",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 1,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-15T23:15:19.262373",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 1,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-18T01:44:29.805022",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 1,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-18T22:23:22.356711",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 1,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-18T22:24:05.876764",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 2,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-18T22:24:48.475638",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 3,
+      "markets_found": 88
+    }
+  },
+  {
+    "timestamp": "2026-06-18T22:25:19.568848",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 4,
+      "markets_found": 88
+    }
+  },
+  {
+    "timestamp": "2026-06-18T22:25:47.971013",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 5,
+      "markets_found": 88
+    }
+  },
+  {
+    "timestamp": "2026-06-18T22:28:27.204049",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 6,
+      "markets_found": 88
+    }
+  },
+  {
+    "timestamp": "2026-06-18T22:28:59.670530",
+    "level": "error",
+    "source": "trading_bot",
+    "message": "Trading cycle failed: 'charmap' codec can't encode character '\\U0001f4ca' in position 0: character maps to <undefined>",
+    "metadata": {
+      "cycle": 7
+    }
+  },
+  {
+    "timestamp": "2026-06-18T22:29:53.934455",
+    "level": "error",
+    "source": "risk_manager",
+    "message": "Risk limit violation: Total exposure 81.2% exceeds limit 75.0%",
+    "metadata": {
+      "type": "total_exposure",
+      "current": 0.8124246442409832,
+      "limit": 0.75,
+      "message": "Total exposure 81.2% exceeds limit 75.0%"
+    }
+  },
+  {
+    "timestamp": "2026-06-18T22:29:53.936608",
+    "level": "error",
+    "source": "risk_manager",
+    "message": "Risk limit violation: Category General exposure 81.2% exceeds limit 25.0%",
+    "metadata": {
+      "type": "category_exposure",
+      "category": "General",
+      "current": 0.8124246442409832,
+      "limit": 0.25,
+      "message": "Category General exposure 81.2% exceeds limit 25.0%"
+    }
+  },
+  {
+    "timestamp": "2026-06-18T22:40:26.678371",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 9,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-18T22:41:55.461869",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 10,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-20T10:52:19.063312",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 11,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-21T18:22:00.611403",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 12,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-21T22:01:23.177180",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 13,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T15:27:28.863447",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 14,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T16:01:40.098731",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 15,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T16:12:35.973122",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 16,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T16:23:10.022011",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 17,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T16:34:04.189039",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 18,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T16:44:53.170684",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 19,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T16:55:43.244385",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 20,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T17:06:24.197999",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 21,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T17:17:14.866296",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 22,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T17:28:04.875922",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 23,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T17:38:57.344278",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 24,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T17:49:31.599049",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 25,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T18:00:07.908154",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 26,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T18:10:42.169529",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 27,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T18:21:17.661779",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 28,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T18:31:52.338670",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 29,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T19:33:39.495264",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 30,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T19:44:25.045098",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 31,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T19:55:10.176976",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 32,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T20:05:51.108395",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 33,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T20:16:26.918141",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 34,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T20:27:16.964295",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 35,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T20:38:06.700755",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 36,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T20:48:44.769254",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 37,
+      "markets_found": 27
+    }
+  },
+  {
+    "timestamp": "2026-06-22T20:59:34.504985",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 38,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T21:10:16.768453",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 39,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T21:21:01.964826",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 40,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T21:31:43.835260",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 41,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T21:42:32.596763",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 42,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T21:53:13.800130",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 43,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T22:04:02.360999",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 44,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T22:14:51.568053",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 45,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T22:25:40.480113",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 46,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T22:36:30.016889",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 47,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T22:47:14.598438",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 48,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T22:57:49.685676",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 49,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T23:08:26.196316",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 50,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T23:19:08.797938",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 51,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T23:29:43.287934",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 52,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T23:33:15.777327",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 53,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T23:43:12.698332",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 54,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T23:45:01.580108",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 55,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-22T23:55:34.600279",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 56,
+      "markets_found": 26
+    }
+  },
+  {
+    "timestamp": "2026-06-23T20:07:11.269384",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 57,
+      "markets_found": 28
+    }
+  },
+  {
+    "timestamp": "2026-06-23T20:10:18.578476",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 58,
+      "markets_found": 28
+    }
+  },
+  {
+    "timestamp": "2026-06-23T21:11:02.743168",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 59,
+      "markets_found": 28
+    }
+  },
+  {
+    "timestamp": "2026-06-23T21:34:45.901826",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 60,
+      "markets_found": 28
+    }
+  },
+  {
+    "timestamp": "2026-06-23T21:36:57.317769",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 61,
+      "markets_found": 28
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.469708",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 96797656031191119176188453471637044475353637081608890153571023284371119486681 at 0.014 (pnl=$+0.46, conf=100%)",
+    "metadata": {
+      "token_id": "96797656031191119176188453471637044475353637081608890153571023284371119486681",
+      "size": 964.7844816154006,
+      "exit_price": 0.014,
+      "entry_price": 0.013518524593987846,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": 0.03561597293141616,
+      "hold_hours": 119.79183753388888,
+      "exit_value": 13.506982742615609,
+      "market_question": "96797656031191119176188453471637044475353637081608890153571023284371119486681",
+      "timestamp": "2026-06-23T22:16:25.468650"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.470918",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 97239126062673310243763617236644392945530356142765650402171508075574679292913 at 0.001 (pnl=$-14.18, conf=100%)",
+    "metadata": {
+      "token_id": "97239126062673310243763617236644392945530356142765650402171508075574679292913",
+      "size": 2362.832102193926,
+      "exit_price": 0.001,
+      "entry_price": 0.007,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.8571428571428571,
+      "hold_hours": 119.79177890694444,
+      "exit_value": 2.362832102193926,
+      "market_question": "97239126062673310243763617236644392945530356142765650402171508075574679292913",
+      "timestamp": "2026-06-23T22:16:25.468650"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.472756",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 22587775301869146748237913050505932485648958481571808324285560650057390882036 at 0.012 (pnl=$-0.57, conf=100%)",
+    "metadata": {
+      "token_id": "22587775301869146748237913050505932485648958481571808324285560650057390882036",
+      "size": 283.9317248347473,
+      "exit_price": 0.012,
+      "entry_price": 0.014,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.14285714285714285,
+      "hold_hours": 119.79172369722222,
+      "exit_value": 3.4071806980169677,
+      "market_question": "22587775301869146748237913050505932485648958481571808324285560650057390882036",
+      "timestamp": "2026-06-23T22:16:25.469174"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.473807",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 99303605181956827630838461879484468077121754034387765735989859308848389894408 at 0.003 (pnl=$+0.00, conf=100%)",
+    "metadata": {
+      "token_id": "99303605181956827630838461879484468077121754034387765735989859308848389894408",
+      "size": 8774.52985473747,
+      "exit_price": 0.003,
+      "entry_price": 0.003,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": 0.0,
+      "hold_hours": 119.79166716027778,
+      "exit_value": 26.32358956421241,
+      "market_question": "99303605181956827630838461879484468077121754034387765735989859308848389894408",
+      "timestamp": "2026-06-23T22:16:25.469174"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.474923",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 39971087496427056640429359043364261029374524049464674733142166279730655826181 at 0.001 (pnl=$-16.49, conf=100%)",
+    "metadata": {
+      "token_id": "39971087496427056640429359043364261029374524049464674733142166279730655826181",
+      "size": 4122.254407971601,
+      "exit_price": 0.001,
+      "entry_price": 0.005,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.8,
+      "hold_hours": 119.79156299916667,
+      "exit_value": 4.122254407971601,
+      "market_question": "39971087496427056640429359043364261029374524049464674733142166279730655826181",
+      "timestamp": "2026-06-23T22:16:25.469174"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.476494",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 93165696161088512376930999170413968261015485018106746563527821398897374023845 at 0.001 (pnl=$-15.92, conf=100%)",
+    "metadata": {
+      "token_id": "93165696161088512376930999170413968261015485018106746563527821398897374023845",
+      "size": 15919.670717593815,
+      "exit_price": 0.001,
+      "entry_price": 0.002,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.5,
+      "hold_hours": 119.79149529749999,
+      "exit_value": 15.919670717593815,
+      "market_question": "93165696161088512376930999170413968261015485018106746563527821398897374023845",
+      "timestamp": "2026-06-23T22:16:25.469174"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.477599",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 43661509251351142169227141691164122649250455115438867334436875294380701133091 at 0.002 (pnl=$-12.46, conf=100%)",
+    "metadata": {
+      "token_id": "43661509251351142169227141691164122649250455115438867334436875294380701133091",
+      "size": 4152.911964328058,
+      "exit_price": 0.002,
+      "entry_price": 0.005,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.6,
+      "hold_hours": 119.79138286527778,
+      "exit_value": 8.305823928656118,
+      "market_question": "43661509251351142169227141691164122649250455115438867334436875294380701133091",
+      "timestamp": "2026-06-23T22:16:25.469174"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.479062",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 80724786407275266937534613008558715581084712230616856739273522348302669402554 at 0.002 (pnl=$-11.84, conf=100%)",
+    "metadata": {
+      "token_id": "80724786407275266937534613008558715581084712230616856739273522348302669402554",
+      "size": 5918.463421300834,
+      "exit_price": 0.002,
+      "entry_price": 0.004,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.5,
+      "hold_hours": 119.79121373527776,
+      "exit_value": 11.836926842601668,
+      "market_question": "80724786407275266937534613008558715581084712230616856739273522348302669402554",
+      "timestamp": "2026-06-23T22:16:25.469174"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.480336",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 32169302633723235235251659810064817019484855501133685217130365128535248672349 at 0.002 (pnl=$-12.10, conf=100%)",
+    "metadata": {
+      "token_id": "32169302633723235235251659810064817019484855501133685217130365128535248672349",
+      "size": 2419.261403339129,
+      "exit_price": 0.002,
+      "entry_price": 0.006999999999999999,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.7142857142857143,
+      "hold_hours": 119.79104167305556,
+      "exit_value": 4.838522806678259,
+      "market_question": "32169302633723235235251659810064817019484855501133685217130365128535248672349",
+      "timestamp": "2026-06-23T22:16:25.469174"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.481418",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 58374167250364215964582274356498746399676421878376948523944979542572589542202 at 0.003 (pnl=$-9.35, conf=100%)",
+    "metadata": {
+      "token_id": "58374167250364215964582274356498746399676421878376948523944979542572589542202",
+      "size": 3116.2764180004597,
+      "exit_price": 0.003,
+      "entry_price": 0.005999999999999999,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.49999999999999994,
+      "hold_hours": 119.79098467583333,
+      "exit_value": 9.348829254001378,
+      "market_question": "58374167250364215964582274356498746399676421878376948523944979542572589542202",
+      "timestamp": "2026-06-23T22:16:25.469708"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.483005",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 30499731947464516579580181356221397335865912996104577000510883912653418218808 at 0.002 (pnl=$-8.93, conf=100%)",
+    "metadata": {
+      "token_id": "30499731947464516579580181356221397335865912996104577000510883912653418218808",
+      "size": 8931.08584471346,
+      "exit_price": 0.002,
+      "entry_price": 0.003,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.3333333333333333,
+      "hold_hours": 119.79087279888888,
+      "exit_value": 17.86217168942692,
+      "market_question": "30499731947464516579580181356221397335865912996104577000510883912653418218808",
+      "timestamp": "2026-06-23T22:16:25.469708"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.484160",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 61595193871140044336898809781418183952441527621084596848414908595268863899573 at 0.001 (pnl=$+0.00, conf=100%)",
+    "metadata": {
+      "token_id": "61595193871140044336898809781418183952441527621084596848414908595268863899573",
+      "size": 51066.43394733144,
+      "exit_price": 0.001,
+      "entry_price": 0.001,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": 0.0,
+      "hold_hours": 119.79072765777778,
+      "exit_value": 51.06643394733144,
+      "market_question": "61595193871140044336898809781418183952441527621084596848414908595268863899573",
+      "timestamp": "2026-06-23T22:16:25.469708"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.485341",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 105252206997885252352889070218074909957179496257006510170583432513037465278006 at 0.001 (pnl=$-17.61, conf=100%)",
+    "metadata": {
+      "token_id": "105252206997885252352889070218074909957179496257006510170583432513037465278006",
+      "size": 8804.709595523955,
+      "exit_price": 0.001,
+      "entry_price": 0.003,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.6666666666666666,
+      "hold_hours": 119.79055755666667,
+      "exit_value": 8.804709595523954,
+      "market_question": "105252206997885252352889070218074909957179496257006510170583432513037465278006",
+      "timestamp": "2026-06-23T22:16:25.469708"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:25.487153",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 62131913648515148266463816694306031394539656598501514114816028349608560215534 at 0.006 (pnl=$-4.25, conf=100%)",
+    "metadata": {
+      "token_id": "62131913648515148266463816694306031394539656598501514114816028349608560215534",
+      "size": 1417.7081151956222,
+      "exit_price": 0.006,
+      "entry_price": 0.009,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.33333333333333326,
+      "hold_hours": 119.79050113111111,
+      "exit_value": 8.506248691173733,
+      "market_question": "62131913648515148266463816694306031394539656598501514114816028349608560215534",
+      "timestamp": "2026-06-23T22:16:25.469708"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:16:44.137599",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 62,
+      "markets_found": 28
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:25:05.859291",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 63,
+      "markets_found": 28
+    }
+  },
+  {
+    "timestamp": "2026-06-23T23:00:16.799166",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 64,
+      "markets_found": 69
+    }
+  },
+  {
+    "timestamp": "2026-06-24T00:00:45.702469",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 65,
+      "markets_found": 69
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:01:14.429693",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 66,
+      "markets_found": 69
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.416117",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 96797656031191119176188453471637044475353637081608890153571023284371119486681 at 0.005 (pnl=$-8.22, conf=100%)",
+    "metadata": {
+      "token_id": "96797656031191119176188453471637044475353637081608890153571023284371119486681",
+      "size": 964.7844816154006,
+      "exit_price": 0.005,
+      "entry_price": 0.013518524593987846,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.6301371525244942,
+      "hold_hours": 122.62598917333334,
+      "exit_value": 4.823922408077003,
+      "market_question": "96797656031191119176188453471637044475353637081608890153571023284371119486681",
+      "timestamp": "2026-06-24T01:06:28.414552"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.419022",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 97239126062673310243763617236644392945530356142765650402171508075574679292913 at 0.001 (pnl=$-14.18, conf=100%)",
+    "metadata": {
+      "token_id": "97239126062673310243763617236644392945530356142765650402171508075574679292913",
+      "size": 2362.832102193926,
+      "exit_price": 0.001,
+      "entry_price": 0.007,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.8571428571428571,
+      "hold_hours": 122.62593054638889,
+      "exit_value": 2.362832102193926,
+      "market_question": "97239126062673310243763617236644392945530356142765650402171508075574679292913",
+      "timestamp": "2026-06-24T01:06:28.414552"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.420196",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 22587775301869146748237913050505932485648958481571808324285560650057390882036 at 0.012 (pnl=$-0.57, conf=100%)",
+    "metadata": {
+      "token_id": "22587775301869146748237913050505932485648958481571808324285560650057390882036",
+      "size": 283.9317248347473,
+      "exit_price": 0.012,
+      "entry_price": 0.014,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.14285714285714285,
+      "hold_hours": 122.62587519111112,
+      "exit_value": 3.4071806980169677,
+      "market_question": "22587775301869146748237913050505932485648958481571808324285560650057390882036",
+      "timestamp": "2026-06-24T01:06:28.415182"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.421927",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 99303605181956827630838461879484468077121754034387765735989859308848389894408 at 0.003 (pnl=$+0.00, conf=100%)",
+    "metadata": {
+      "token_id": "99303605181956827630838461879484468077121754034387765735989859308848389894408",
+      "size": 8774.52985473747,
+      "exit_price": 0.003,
+      "entry_price": 0.003,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": 0.0,
+      "hold_hours": 122.62581882916668,
+      "exit_value": 26.32358956421241,
+      "market_question": "99303605181956827630838461879484468077121754034387765735989859308848389894408",
+      "timestamp": "2026-06-24T01:06:28.415182"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.424026",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 39971087496427056640429359043364261029374524049464674733142166279730655826181 at 0.001 (pnl=$-16.49, conf=100%)",
+    "metadata": {
+      "token_id": "39971087496427056640429359043364261029374524049464674733142166279730655826181",
+      "size": 4122.254407971601,
+      "exit_price": 0.001,
+      "entry_price": 0.005,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.8,
+      "hold_hours": 122.62571466805555,
+      "exit_value": 4.122254407971601,
+      "market_question": "39971087496427056640429359043364261029374524049464674733142166279730655826181",
+      "timestamp": "2026-06-24T01:06:28.415182"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.425171",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 93165696161088512376930999170413968261015485018106746563527821398897374023845 at 0.001 (pnl=$-15.92, conf=100%)",
+    "metadata": {
+      "token_id": "93165696161088512376930999170413968261015485018106746563527821398897374023845",
+      "size": 15919.670717593815,
+      "exit_price": 0.001,
+      "entry_price": 0.002,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.5,
+      "hold_hours": 122.62564711888888,
+      "exit_value": 15.919670717593815,
+      "market_question": "93165696161088512376930999170413968261015485018106746563527821398897374023845",
+      "timestamp": "2026-06-24T01:06:28.415731"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.426294",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 43661509251351142169227141691164122649250455115438867334436875294380701133091 at 0.002 (pnl=$-12.46, conf=100%)",
+    "metadata": {
+      "token_id": "43661509251351142169227141691164122649250455115438867334436875294380701133091",
+      "size": 4152.911964328058,
+      "exit_price": 0.002,
+      "entry_price": 0.005,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.6,
+      "hold_hours": 122.62553468666667,
+      "exit_value": 8.305823928656118,
+      "market_question": "43661509251351142169227141691164122649250455115438867334436875294380701133091",
+      "timestamp": "2026-06-24T01:06:28.415731"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.428357",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 80724786407275266937534613008558715581084712230616856739273522348302669402554 at 0.002 (pnl=$-11.84, conf=100%)",
+    "metadata": {
+      "token_id": "80724786407275266937534613008558715581084712230616856739273522348302669402554",
+      "size": 5918.463421300834,
+      "exit_price": 0.002,
+      "entry_price": 0.004,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.5,
+      "hold_hours": 122.62536555666668,
+      "exit_value": 11.836926842601668,
+      "market_question": "80724786407275266937534613008558715581084712230616856739273522348302669402554",
+      "timestamp": "2026-06-24T01:06:28.415731"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.430484",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 32169302633723235235251659810064817019484855501133685217130365128535248672349 at 0.002 (pnl=$-12.10, conf=100%)",
+    "metadata": {
+      "token_id": "32169302633723235235251659810064817019484855501133685217130365128535248672349",
+      "size": 2419.261403339129,
+      "exit_price": 0.002,
+      "entry_price": 0.006999999999999999,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.7142857142857143,
+      "hold_hours": 122.62519360166667,
+      "exit_value": 4.838522806678259,
+      "market_question": "32169302633723235235251659810064817019484855501133685217130365128535248672349",
+      "timestamp": "2026-06-24T01:06:28.416117"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.431521",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 58374167250364215964582274356498746399676421878376948523944979542572589542202 at 0.003 (pnl=$-9.35, conf=100%)",
+    "metadata": {
+      "token_id": "58374167250364215964582274356498746399676421878376948523944979542572589542202",
+      "size": 3116.2764180004597,
+      "exit_price": 0.003,
+      "entry_price": 0.005999999999999999,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.49999999999999994,
+      "hold_hours": 122.62513645611112,
+      "exit_value": 9.348829254001378,
+      "market_question": "58374167250364215964582274356498746399676421878376948523944979542572589542202",
+      "timestamp": "2026-06-24T01:06:28.416117"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.433359",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 30499731947464516579580181356221397335865912996104577000510883912653418218808 at 0.002 (pnl=$-8.93, conf=100%)",
+    "metadata": {
+      "token_id": "30499731947464516579580181356221397335865912996104577000510883912653418218808",
+      "size": 8931.08584471346,
+      "exit_price": 0.002,
+      "entry_price": 0.003,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.3333333333333333,
+      "hold_hours": 122.62502457916668,
+      "exit_value": 17.86217168942692,
+      "market_question": "30499731947464516579580181356221397335865912996104577000510883912653418218808",
+      "timestamp": "2026-06-24T01:06:28.416117"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.434975",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 61595193871140044336898809781418183952441527621084596848414908595268863899573 at 0.001 (pnl=$+0.00, conf=100%)",
+    "metadata": {
+      "token_id": "61595193871140044336898809781418183952441527621084596848414908595268863899573",
+      "size": 51066.43394733144,
+      "exit_price": 0.001,
+      "entry_price": 0.001,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": 0.0,
+      "hold_hours": 122.62487943805556,
+      "exit_value": 51.06643394733144,
+      "market_question": "61595193871140044336898809781418183952441527621084596848414908595268863899573",
+      "timestamp": "2026-06-24T01:06:28.416117"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.437142",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 105252206997885252352889070218074909957179496257006510170583432513037465278006 at 0.001 (pnl=$-17.61, conf=100%)",
+    "metadata": {
+      "token_id": "105252206997885252352889070218074909957179496257006510170583432513037465278006",
+      "size": 8804.709595523955,
+      "exit_price": 0.001,
+      "entry_price": 0.003,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.6666666666666666,
+      "hold_hours": 122.62470933694445,
+      "exit_value": 8.804709595523954,
+      "market_question": "105252206997885252352889070218074909957179496257006510170583432513037465278006",
+      "timestamp": "2026-06-24T01:06:28.416117"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:28.438628",
+    "level": "info",
+    "source": "exit_manager",
+    "message": "Paper exit: risk_limit for 62131913648515148266463816694306031394539656598501514114816028349608560215534 at 0.006 (pnl=$-4.25, conf=100%)",
+    "metadata": {
+      "token_id": "62131913648515148266463816694306031394539656598501514114816028349608560215534",
+      "size": 1417.7081151956222,
+      "exit_price": 0.006,
+      "entry_price": 0.009,
+      "side_to_close": "SELL",
+      "reason": "risk_limit",
+      "confidence": 1.0,
+      "unrealized_pnl": -0.33333333333333326,
+      "hold_hours": 122.62465291138889,
+      "exit_value": 8.506248691173733,
+      "market_question": "62131913648515148266463816694306031394539656598501514114816028349608560215534",
+      "timestamp": "2026-06-24T01:06:28.416117"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T01:06:50.981605",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 67,
+      "markets_found": 69
+    }
+  },
+  {
+    "timestamp": "2026-06-27T22:03:01.117820",
+    "level": "info",
+    "source": "trading_bot",
+    "message": "No orders generated in current cycle",
+    "metadata": {
+      "cycle": 1,
+      "markets_found": 4
+    }
+  }
+]

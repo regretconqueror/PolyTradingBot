@@ -182,7 +182,8 @@ class PolymarketTradingBot:
         self.max_api_failures = 5
 
         # Initialize alert manager
-        self.alert_manager = AlertManager()
+        alert_file = "alerts_paper.json" if paper_mode else "alerts_live.json"
+        self.alert_manager = AlertManager(alert_file=alert_file)
 
         # --- Exit Signal Configuration (Freqtrade-style exit framework) ---
         # Take-profit: exit when estimated probability moves this much toward 1.0

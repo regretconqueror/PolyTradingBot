@@ -1017,7 +1017,8 @@ def initialize_bot():
             paper_mode=settings.paper_mode,
             enable_yes_no_arb=True
         )
-        bot.load_state()
+        state_file = "bot_state_paper.json" if settings.paper_mode else "bot_state_live.json"
+        bot.load_state(state_file)
         return bot, settings
     except Exception as e:
         st.error(f"Failed to initialize bot: {str(e)}")
